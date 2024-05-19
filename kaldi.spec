@@ -14,7 +14,7 @@ URL: https://github.com/kaldi-asr/kaldi
 License: GPL
 Group: System/Libraries
 BuildRequires: cmake(OpenBLAS)
-BuildRequires: cmake(lapack)
+BuildRequires: pkgconfig(lapack)
 BuildSystem: cmake
 BuildOption: -DFETCHCONTENT_FULLY_DISCONNECTED:BOOL=ON
 BuildRequires: git-core
