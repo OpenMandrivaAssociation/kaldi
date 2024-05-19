@@ -1,0 +1,24 @@
+diff -up kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/extensions/ngram/nthbit.cc.omv~ kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/extensions/ngram/nthbit.cc
+--- kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/extensions/ngram/nthbit.cc.omv~	2024-05-19 13:46:22.272013041 +0200
++++ kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/extensions/ngram/nthbit.cc	2024-05-19 13:46:28.664067884 +0200
+@@ -3,7 +3,7 @@
+ 
+ #include <fst/extensions/ngram/nthbit.h>
+ 
+-#ifndef __BMI2__
++#if 1 //ndef __BMI2__
+ // This table is generated using:
+ //
+ //  unsigned int nth_bit_scan(uint64 v, unsigned int r) {
+diff -up kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/include/fst/extensions/ngram/nthbit.h.omv~ kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/include/fst/extensions/ngram/nthbit.h
+--- kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/include/fst/extensions/ngram/nthbit.h.omv~	2024-05-19 13:41:53.149681948 +0200
++++ kaldi-2024.05.19/openfst-338225416178ac36b8002d70387f5556e44c8d05/src/include/fst/extensions/ngram/nthbit.h	2024-05-19 13:42:03.825775391 +0200
+@@ -7,7 +7,7 @@
+ #include <fst/types.h>
+ #include <fst/compat.h>
+ 
+-#ifdef __BMI2__
++#if 0 //def __BMI2__
+ // PDEP requires BMI2.
+ 
+ // Returns the position (0-63) of the r-th 1 bit in v.
