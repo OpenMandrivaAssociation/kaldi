@@ -17,6 +17,7 @@ License: Apache-2.0
 Group: System/Libraries
 BuildRequires: cmake(OpenBLAS)
 BuildRequires: pkgconfig(lapack)
+BuildRequires: %{mklibname -d fst}
 BuildRequires: git-core
 BuildSystem: cmake
 BuildOption: -DFETCHCONTENT_FULLY_DISCONNECTED:BOOL=ON
