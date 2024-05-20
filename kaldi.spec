@@ -4,7 +4,7 @@
 
 Name: kaldi
 Version: 2024.05.19
-Release: 1
+Release: 2
 Source0: https://github.com/kaldi-asr/kaldi/archive/refs/heads/master.tar.gz#/%{name}-%{version}.tar.gz
 # Commit hash is from cmake/third_party/openfst.cmake
 Source1: https://github.com/kkm000/openfst/archive/338225416178ac36b8002d70387f5556e44c8d05.tar.gz
@@ -63,6 +63,10 @@ git commit -am "Import into fake repository"
 %install -a
 rm -rf %{buildroot}%{_prefix}/testbin
 
+%if "%{_lib}" != "lib"
+mv %{buildroot}%{_prefix}/lib/cmake/kaldi/* %{buildroot}%{_libdir}/cmake/kaldi
+%endif
+
 %files
 %{_bindir}/*
 
@@ -75,4 +79,3 @@ rm -rf %{buildroot}%{_prefix}/testbin
 %{_includedir}/fst
 %{_includedir}/kaldi
 %{_libdir}/cmake/*
-%{_prefix}/lib/cmake/*
