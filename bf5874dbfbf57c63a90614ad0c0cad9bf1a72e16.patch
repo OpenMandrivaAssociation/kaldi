@@ -1,0 +1,22 @@
+From bf5874dbfbf57c63a90614ad0c0cad9bf1a72e16 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?R=C3=A9mi=20Bernon?= <rbernon@codeweavers.com>
+Date: Sun, 29 May 2022 12:18:25 +0200
+Subject: [PATCH] build: Use C++17 standard.
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 015fa01316a..e0ca3ea2871 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -41,7 +41,7 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE}
+ )
+ unset(IS_LIB_SHARE)
+ 
+-set(CMAKE_CXX_STANDARD 14)
++set(CMAKE_CXX_STANDARD 17)
+ set(CMAKE_CXX_EXTENSIONS OFF)
+ set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
+ if(BUILD_SHARED_LIBS)

@@ -1,0 +1,48 @@
+From 11b67d387b547d1afb616ab8f95fd74c459d20c6 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Mon, 6 Nov 2023 01:30:15 +0100
+Subject: [PATCH] apply_map conflicts with new openfst, custom script for
+ symtab relabel
+
+---
+ egs/wsj/s5/utils/mkgraph_lookahead.sh |  2 +-
+ egs/wsj/s5/utils/relabel_words.py     | 17 +++++++++++++++++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+ create mode 100755 egs/wsj/s5/utils/relabel_words.py
+
+diff --git a/egs/wsj/s5/utils/mkgraph_lookahead.sh b/egs/wsj/s5/utils/mkgraph_lookahead.sh
+index 33280f13a65..82261b56a49 100755
+--- a/egs/wsj/s5/utils/mkgraph_lookahead.sh
++++ b/egs/wsj/s5/utils/mkgraph_lookahead.sh
+@@ -161,7 +161,7 @@ if [[ -z $arpa ]]; then
+ else
+   if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $arpa ]]; then
+     # Opengrm builds acceptors, so we need to reorder words in symboltable
+-    utils/apply_map.pl --permissive -f 2 ${dir}/relabel < ${lang}/words.txt > ${dir}/words.txt
++    utils/relabel_words.py ${dir}/relabel ${lang}/words.txt > ${dir}/words.txt
+     gunzip -c $arpa | ngramread --OOV_symbol=`cat ${lang}/oov.txt` --symbols=${dir}/words.txt --ARPA | \
+     fstarcsort --sort_type=ilabel | \
+       fstconvert --fst_type=ngram > ${dir}/Gr.fst.$$
+diff --git a/egs/wsj/s5/utils/relabel_words.py b/egs/wsj/s5/utils/relabel_words.py
+new file mode 100755
+index 00000000000..cc2048d6bc6
+--- /dev/null
++++ b/egs/wsj/s5/utils/relabel_words.py
+@@ -0,0 +1,17 @@
++#!/usr/bin/env python3
++# Relabel words for lookahead
++
++import sys
++
++lmap = {}
++for line in open(sys.argv[1]):
++    items = line.split()
++    lmap[items[0]] = items[1]
++
++for line in open(sys.argv[2]):
++    line = line.strip()
++    word, id = line.split()
++    if word in set(["<eps>", "<s>", "</s>"]):
++        print (line)
++    else:
++        print (word, lmap[id])

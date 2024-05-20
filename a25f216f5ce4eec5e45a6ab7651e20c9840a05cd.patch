@@ -1,0 +1,33 @@
+From a25f216f5ce4eec5e45a6ab7651e20c9840a05cd Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Mon, 17 Apr 2023 02:37:33 +0200
+Subject: [PATCH] No need for atomicAdd for float2, conflicts with CUDA 12.1
+
+---
+ src/cudafeat/feature-online-batched-cmvn-cuda-kernels.cu | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/src/cudafeat/feature-online-batched-cmvn-cuda-kernels.cu b/src/cudafeat/feature-online-batched-cmvn-cuda-kernels.cu
+index c839548d6eb..d803a915ea0 100644
+--- a/src/cudafeat/feature-online-batched-cmvn-cuda-kernels.cu
++++ b/src/cudafeat/feature-online-batched-cmvn-cuda-kernels.cu
+@@ -24,6 +24,7 @@ __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
+   retval.y = a.y - b.y;
+   return retval;
+ }
++
+ __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
+   float2 retval;
+   retval.x = a.x + b.x;
+@@ -31,11 +32,6 @@ __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
+   return retval;
+ }
+ 
+-__device__ inline void atomicAdd(float2 *addr, float2 val) {
+-  atomicAdd(reinterpret_cast<float *>(addr), val.x);
+-  atomicAdd(reinterpret_cast<float *>(addr) + 1, val.y);
+-}
+-
+ __device__ inline void operator+=(float2 &a, float2 &b) {
+   // overloading +=
+   a.x += b.x;

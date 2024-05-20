@@ -1,0 +1,117 @@
+From cb664d5a4523e87ca5433355150f085168d25870 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Wed, 6 Jan 2021 00:30:01 +0100
+Subject: [PATCH] Add openblas with clapack to avoid gfortran
+
+---
+ src/configure                            | 58 +++++++++++++++++++++++-
+ tools/.gitignore                         |  1 +
+ tools/extras/install_openblas_clapack.sh | 11 +++++
+ 3 files changed, 69 insertions(+), 1 deletion(-)
+ create mode 100755 tools/extras/install_openblas_clapack.sh
+
+diff --git a/src/configure b/src/configure
+index ed627eceedc..badbf657b9b 100755
+--- a/src/configure
++++ b/src/configure
+@@ -834,7 +834,7 @@ auto_lib=             # Deduced lib name, used when $MATHLIB is not set.
+ 
+ # Validate the (optionally) provided MATHLIB value.
+ case $MATHLIB in
+-  ''|ATLAS|CLAPACK|MKL|OPENBLAS) : ;;
++  ''|ATLAS|CLAPACK|MKL|OPENBLAS|OPENBLAS_CLAPACK) : ;;
+   *) failure "Unknown --mathlib='${MATHLIB}'. Supported libs: ATLAS CLAPACK MKL OPENBLAS" ;;
+ esac
+ 
+@@ -1299,6 +1299,62 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
+       *)        cat makefiles/linux_openblas.mk ;;
+     esac >> kaldi.mk
+ 
++    echo "Successfully configured for Linux with OpenBLAS from $OPENBLASROOT"
++  elif [ "$MATHLIB" == "OPENBLAS_CLAPACK" ]; then
++    if [[ ! $OPENBLASROOT ]]; then
++      # Either the user specified --mathlib=OPENBLAS or we've autodetected the
++      # system where OpenBLAS is the preferred option (the parser for
++      # --openblas-root fails fatally if the path does not exist, so we trust
++      # that if set, the variable contains the existing path, converted to
++      # absolute form).
++      OPENBLASROOT="$(rel2abs ../tools/OpenBLAS/install)" ||
++        Die "OpenBLAS not found in '../tools/OpenBLAS/install'.
++** This is the only place we look for it. The best option is to build OpenBLAS
++** tuned for your system and CPU. To do that, run the following commands:
++**
++**   cd ../tools; extras/install_openblas.sh
++**
++** Another option is to specify the location of existing OpenBLAS directory
++** with the switch '--openblas-root='. However, even if a package is provided
++** for your system, the packaged version is almost always significantly slower
++** and often older than the above commands can fetch and build.
++**
++** You can also use other matrix algebra libraries. For information, see:
++**   http://kaldi-asr.org/doc/matrixwrap.html"
++    fi
++    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
++      OPENBLASLIBDIR=$OPENBLASROOT/lib
++    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
++      # in REDHAT/CentOS package installs, the library is located here
++      OPENBLASLIBDIR=$OPENBLASROOT/lib64
++    else
++      failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
++    fi
++    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
++      OPENBLASINCDIR=$OPENBLASROOT/include
++    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
++      # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
++      OPENBLASINCDIR=$OPENBLASROOT/include/openblas
++    else
++      echo "$0: ***** Using OpenBLAS from $OPENBLASROOT but cblas.h is not found. "
++      echo "** Assuming openblas is aleady in a default include path, but"
++      echo "** if you get compilation messages about not finding files like cblas.h,"
++      echo "** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
++      echo "** if it is a package-based install)."
++      OPENBLASINCDIR="/usr/include"
++    fi
++    echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
++    OPENBLASLIBS="-L$OPENBLASLIBDIR -l:libopenblas.a -l:libblas.a -l:liblapack.a -l:libf2c.a"
++    echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
++    echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
++    echo >> kaldi.mk
++    case $TARGET_ARCH in
++      aarch64*) cat makefiles/linux_openblas_aarch64.mk ;;
++      arm*)     cat makefiles/linux_openblas_arm.mk ;;
++      ppc64le)  cat makefiles/linux_openblas_ppc64le.mk ;;
++      *)        cat makefiles/linux_openblas.mk ;;
++    esac >> kaldi.mk
++
+     echo "Successfully configured for Linux with OpenBLAS from $OPENBLASROOT"
+   else
+     failure "Unsupported linear algebra library '$MATHLIB'"
+diff --git a/tools/.gitignore b/tools/.gitignore
+index 7190069bb0d..ece5032a109 100644
+--- a/tools/.gitignore
++++ b/tools/.gitignore
+@@ -12,6 +12,7 @@ CLAPACK_include
+ Miniconda3-latest-Linux-x86_64.sh
+ OpenBLAS/
+ bazel/
++clapack/
+ cub
+ cub-*/
+ faster-rnnlm/
+diff --git a/tools/extras/install_openblas_clapack.sh b/tools/extras/install_openblas_clapack.sh
+new file mode 100755
+index 00000000000..76df7e9744c
+--- /dev/null
++++ b/tools/extras/install_openblas_clapack.sh
+@@ -0,0 +1,11 @@
++#!/usr/bin/env bash
++
++OPENBLAS_VERSION=0.3.13
++CLAPACK_VERSION=3.2.1
++
++git clone -b v${OPENBLAS_VERSION} --single-branch https://github.com/xianyi/OpenBLAS
++git clone -b v${CLAPACK_VERSION} --single-branch https://github.com/alphacep/clapack \
++
++make -C OpenBLAS ONLY_CBLAS=1 DYNAMIC_ARCH=1 USE_LOCKING=1 USE_THREAD=0 all
++make -C OpenBLAS PREFIX=$(pwd)/OpenBLAS/install install
++mkdir -p clapack/BUILD && cd clapack/BUILD && cmake .. && make -j 10 && find . -name "*.a" | xargs cp -t ../../OpenBLAS/install/lib

@@ -1,0 +1,34 @@
+From 4989c2fa65ee7a4868a5d42edc469a070e9cbda1 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sun, 15 May 2022 23:59:31 +0200
+Subject: [PATCH] Bump openblas version
+
+---
+ tools/extras/install_openblas.sh         | 2 +-
+ tools/extras/install_openblas_clapack.sh | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tools/extras/install_openblas.sh b/tools/extras/install_openblas.sh
+index ce394f6dc33..a4eccbd01e9 100755
+--- a/tools/extras/install_openblas.sh
++++ b/tools/extras/install_openblas.sh
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env bash
+ 
+-OPENBLAS_VERSION=0.3.13
++OPENBLAS_VERSION=0.3.20
+ 
+ WGET=${WGET:-wget}
+ 
+diff --git a/tools/extras/install_openblas_clapack.sh b/tools/extras/install_openblas_clapack.sh
+index 6ae52e96965..08274d25775 100755
+--- a/tools/extras/install_openblas_clapack.sh
++++ b/tools/extras/install_openblas_clapack.sh
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env bash
+ 
+-OPENBLAS_VERSION=0.3.13
++OPENBLAS_VERSION=0.3.20
+ CLAPACK_VERSION=3.2.1
+ 
+ git clone -b v${OPENBLAS_VERSION} --single-branch https://github.com/xianyi/OpenBLAS

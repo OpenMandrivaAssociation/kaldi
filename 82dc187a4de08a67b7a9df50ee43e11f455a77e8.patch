@@ -1,0 +1,19 @@
+From 82dc187a4de08a67b7a9df50ee43e11f455a77e8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?R=C3=A9mi=20Bernon?= <rbernon@codeweavers.com>
+Date: Sun, 29 May 2022 12:17:44 +0200
+Subject: [PATCH] build: Only require CMake 3.13.
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 886af19c693..81743beddb7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.18)
++cmake_minimum_required(VERSION 3.13)
+ project(kaldi)
+ 
+ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

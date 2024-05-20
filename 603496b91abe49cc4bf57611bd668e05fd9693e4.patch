@@ -1,0 +1,22 @@
+From 603496b91abe49cc4bf57611bd668e05fd9693e4 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Fri, 8 Jan 2021 12:51:54 +0100
+Subject: [PATCH] Fix openfst issue for tests
+
+---
+ src/fstext/trivial-factor-weight.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/fstext/trivial-factor-weight.h b/src/fstext/trivial-factor-weight.h
+index 044e83b1f96..d1c679f7fda 100644
+--- a/src/fstext/trivial-factor-weight.h
++++ b/src/fstext/trivial-factor-weight.h
+@@ -390,7 +390,7 @@ class ArcIterator< TrivialFactorWeightFst<A, F> >
+ template <class A, class F>
+ inline void TrivialFactorWeightFst<A, F>::InitStateIterator(
+     StateIteratorData<A> *data) const {
+-  data->base = new StateIterator< TrivialFactorWeightFst<A, F> >(*this);
++  data->base = fst::make_unique<StateIterator<TrivialFactorWeightFst<A, F> > >(*this);
+ }
+ 
+ 

@@ -1,0 +1,51 @@
+From d54092c0c51d931c51df602af204723378555138 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sat, 4 Nov 2023 16:03:43 +0100
+Subject: [PATCH] Fix dependencies for modern state
+
+---
+ tools/extras/check_dependencies.sh | 12 ------------
+ tools/extras/install_openblas.sh   |  2 +-
+ 2 files changed, 1 insertion(+), 13 deletions(-)
+
+diff --git a/tools/extras/check_dependencies.sh b/tools/extras/check_dependencies.sh
+index 155a376b6e6..2591c4b6bae 100755
+--- a/tools/extras/check_dependencies.sh
++++ b/tools/extras/check_dependencies.sh
+@@ -82,23 +82,11 @@ if ! have libtoolize && ! have glibtoolize; then
+   add_packages libtool
+ fi
+ 
+-if ! have svn; then
+-  echo "$0: subversion is not installed"
+-  add_packages subversion
+-fi
+-
+ if ! have awk; then
+   echo "$0: awk is not installed"
+   add_packages gawk
+ fi
+ 
+-pythonok=true
+-if ! have python2.7; then
+-  echo "$0: python2.7 is not installed"
+-  add_packages python27 python2.7
+-  pythonok=false
+-fi
+-
+ if ! have python3; then
+   echo "$0: python3 is not installed"
+   add_packages python3
+diff --git a/tools/extras/install_openblas.sh b/tools/extras/install_openblas.sh
+index a4eccbd01e9..22e75b7c1b8 100755
+--- a/tools/extras/install_openblas.sh
++++ b/tools/extras/install_openblas.sh
+@@ -24,7 +24,7 @@ rm -rf xianyi-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
+ if [ -d "$DOWNLOAD_DIR" ]; then
+   cp -p "$DOWNLOAD_DIR/$tarball" .
+ else
+-  url=$($WGET -qO- "https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
++  url=$($WGET -qO- "https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
+   test -n "$url"
+   $WGET -t3 -nv -O $tarball "$url"
+ fi

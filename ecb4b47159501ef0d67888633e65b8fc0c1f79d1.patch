@@ -1,0 +1,60 @@
+From ecb4b47159501ef0d67888633e65b8fc0c1f79d1 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Wed, 2 Nov 2022 01:02:12 +0100
+Subject: [PATCH] Avoid CMVN update for quiet frames
+
+---
+ src/feat/online-feature.cc | 6 ++++--
+ src/feat/online-feature.h  | 8 ++++++--
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/src/feat/online-feature.cc b/src/feat/online-feature.cc
+index acf2bb9cfa9..f316e9bfec3 100644
+--- a/src/feat/online-feature.cc
++++ b/src/feat/online-feature.cc
+@@ -428,8 +428,10 @@ void OnlineCmvn::GetFrame(int32 frame,
+   if (frozen_state_.NumRows() != 0) {  // the CMVN state has been frozen.
+     stats.CopyFromMat(frozen_state_);
+   } else {
+-    // first get the raw CMVN stats (this involves caching..)
+-    this->ComputeStatsForFrame(frame, &stats);
++    if ((*feat)(0) > opts_.min_energy) {
++        // first get the raw CMVN stats (this involves caching..)
++        this->ComputeStatsForFrame(frame, &stats);
++    }
+     // now smooth them.
+     SmoothOnlineCmvnStats(orig_state_.speaker_cmvn_stats,
+                           orig_state_.global_cmvn_stats,
+diff --git a/src/feat/online-feature.h b/src/feat/online-feature.h
+index b9dfcc0171e..b062d4f84e4 100644
+--- a/src/feat/online-feature.h
++++ b/src/feat/online-feature.h
+@@ -215,6 +215,7 @@ struct OnlineCmvnOptions {
+                            // modulus.
+   std::string skip_dims; // Colon-separated list of dimensions to skip normalization
+                          // of, e.g. 13:14:15.
++  float min_energy; // Minimum energy (c0 coefficient) to update frame stats
+ 
+   OnlineCmvnOptions():
+       cmn_window(600),
+@@ -224,7 +225,8 @@ struct OnlineCmvnOptions {
+       normalize_variance(false),
+       modulus(20),
+       ring_buffer_size(20),
+-      skip_dims("") { }
++      skip_dims(""),
++      min_energy(50.0f) { }
+ 
+   void Check() const {
+     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
+@@ -248,7 +250,9 @@ struct OnlineCmvnOptions {
+     po->Register("norm-means", &normalize_mean, "If true, do mean normalization "
+                  "(note: you cannot normalize the variance but not the mean)");
+     po->Register("skip-dims", &skip_dims, "Dimensions to skip normalization of "
+-                 "(colon-separated list of integers)");}
++                 "(colon-separated list of integers)");
++    po->Register("cmn-min-energy", &min_energy, "Minimum energy value (c0 coefficient) "
++                 "to update frame stats.");}
+ };
+ 
+ 

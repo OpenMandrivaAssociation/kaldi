@@ -1,0 +1,35 @@
+From 341d0a52e1a28d55dfcdf10356b5e0eccb9dd700 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sat, 4 Nov 2023 18:01:27 +0100
+Subject: [PATCH] Openblas repo was renamed
+
+---
+ tools/extras/install_openblas.sh | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/tools/extras/install_openblas.sh b/tools/extras/install_openblas.sh
+index 22e75b7c1b8..328bbe7d299 100755
+--- a/tools/extras/install_openblas.sh
++++ b/tools/extras/install_openblas.sh
+@@ -19,18 +19,18 @@ fi
+ 
+ tarball=OpenBLAS-$OPENBLAS_VERSION.tar.gz
+ 
+-rm -rf xianyi-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
++rm -rf OpenMathLib-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
+ 
+ if [ -d "$DOWNLOAD_DIR" ]; then
+   cp -p "$DOWNLOAD_DIR/$tarball" .
+ else
+-  url=$($WGET -qO- "https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
++  url=$($WGET -qO- "https://api.github.com/repos/OpenMathLib/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
+   test -n "$url"
+   $WGET -t3 -nv -O $tarball "$url"
+ fi
+ 
+ tar xzf $tarball
+-mv xianyi-OpenBLAS-* OpenBLAS
++mv OpenMathLib-OpenBLAS-* OpenBLAS
+ 
+ make PREFIX=$(pwd)/OpenBLAS/install DYNAMIC_ARCH=1 USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
+ if [ $? -eq 0 ]; then

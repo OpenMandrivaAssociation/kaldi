@@ -1,0 +1,20 @@
+From 8cbc20fbf66030fce8afbea803bd52335f4e52fa Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Fri, 28 Feb 2020 11:50:21 +0100
+Subject: [PATCH] Update LD_LIBRARY_PATH in common path, fixes
+ https://github.com/kaldi-asr/kaldi/issues/3959
+
+---
+ tools/config/common_path.sh | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/tools/config/common_path.sh b/tools/config/common_path.sh
+index 5b229b9a626..9fd9e091b3c 100644
+--- a/tools/config/common_path.sh
++++ b/tools/config/common_path.sh
+@@ -25,3 +25,5 @@ ${KALDI_ROOT}/src/tfrnnlmbin:\
+ ${KALDI_ROOT}/src/cudadecoderbin:\
+ ${KALDI_ROOT}/src/cudafeatbin:\
+ $PATH
++# Required to load Openfst extensions like ngram-fst
++export LD_LIRBRARY_PATH=$LD_LIBRARY_PATH:${KALDI_ROOT}/tools/openfst/lib/fst

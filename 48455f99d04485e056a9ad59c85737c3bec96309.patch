@@ -1,0 +1,86 @@
+From 48455f99d04485e056a9ad59c85737c3bec96309 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Thu, 2 Jun 2022 01:12:03 +0200
+Subject: [PATCH] Add riscv64
+
+---
+ src/configure                           |  2 +
+ src/makefiles/linux_openblas_riscv64.mk | 49 +++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
+ create mode 100644 src/makefiles/linux_openblas_riscv64.mk
+
+diff --git a/src/configure b/src/configure
+index 723d1b3362a..ed62daa5017 100755
+--- a/src/configure
++++ b/src/configure
+@@ -1296,6 +1296,7 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
+       aarch64*) cat makefiles/linux_openblas_aarch64.mk ;;
+       arm*)     cat makefiles/linux_openblas_arm.mk ;;
+       ppc64le)  cat makefiles/linux_openblas_ppc64le.mk ;;
++      riscv64)  cat makefiles/linux_openblas_riscv64.mk ;;
+       *)        cat makefiles/linux_openblas.mk ;;
+     esac >> kaldi.mk
+ 
+@@ -1352,6 +1353,7 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
+       aarch64*) cat makefiles/linux_openblas_aarch64.mk ;;
+       arm*)     cat makefiles/linux_openblas_arm.mk ;;
+       ppc64le)  cat makefiles/linux_openblas_ppc64le.mk ;;
++      riscv64)  cat makefiles/linux_openblas_riscv64.mk ;;
+       *)        cat makefiles/linux_openblas.mk ;;
+     esac >> kaldi.mk
+ 
+diff --git a/src/makefiles/linux_openblas_riscv64.mk b/src/makefiles/linux_openblas_riscv64.mk
+new file mode 100644
+index 00000000000..d81990aed7a
+--- /dev/null
++++ b/src/makefiles/linux_openblas_riscv64.mk
+@@ -0,0 +1,49 @@
++# OpenBLAS specific Linux ARM configuration
++
++ifndef DEBUG_LEVEL
++$(error DEBUG_LEVEL not defined.)
++endif
++ifndef DOUBLE_PRECISION
++$(error DOUBLE_PRECISION not defined.)
++endif
++ifndef OPENFSTINC
++$(error OPENFSTINC not defined.)
++endif
++ifndef OPENFSTLIBS
++$(error OPENFSTLIBS not defined.)
++endif
++ifndef OPENBLASINC
++$(error OPENBLASINC not defined.)
++endif
++ifndef OPENBLASLIBS
++$(error OPENBLASLIBS not defined.)
++endif
++
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++           -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
++           -Wno-deprecated-declarations -Winit-self \
++           -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
++           -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_OPENBLAS -I$(OPENBLASINC) \
++           -ftree-vectorize -pthread \
++           -g
++
++ifeq ($(KALDI_FLAVOR), dynamic)
++CXXFLAGS += -fPIC
++endif
++
++ifeq ($(DEBUG_LEVEL), 0)
++CXXFLAGS += -DNDEBUG
++endif
++ifeq ($(DEBUG_LEVEL), 2)
++CXXFLAGS += -O0 -DKALDI_PARANOID
++endif
++
++# Compiler specific flags
++COMPILER = $(shell $(CXX) -v 2>&1)
++ifeq ($(findstring clang,$(COMPILER)),clang)
++# Suppress annoying clang warnings that are perfectly valid per spec.
++CXXFLAGS += -Wno-mismatched-tags
++endif
++
++LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
++LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lpthread -ldl

@@ -1,0 +1,24 @@
+From b499bbca50edef8bbfabf16f2526ad0b7367b500 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Tue, 9 Nov 2021 00:44:31 +0100
+Subject: [PATCH] Fix warning
+
+---
+ src/fstext/pre-determinize-inl.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/fstext/pre-determinize-inl.h b/src/fstext/pre-determinize-inl.h
+index d51948f1877..998fb2997ad 100644
+--- a/src/fstext/pre-determinize-inl.h
++++ b/src/fstext/pre-determinize-inl.h
+@@ -235,8 +235,8 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
+   assert(symTable != NULL);
+   const char *prefix_ptr = prefix.c_str();
+   size_t prefix_len = strlen(prefix_ptr);  // allowed to be zero but not encouraged.
+-  for (SymbolTableIterator siter(*symTable); !siter.Done(); siter.Next()) {
+-    const std::string &sym = siter.Symbol();
++  for (SymbolTable::iterator siter = symTable->begin(); siter != symTable->end(); ++siter) {
++    const std::string &sym = siter->Symbol();
+     if (!strncmp(prefix_ptr, sym.c_str(), prefix_len)) {  // has prefix.
+       if (isdigit(sym[prefix_len])) {  // we don't allow prefix followed by a digit, as a symbol.
+         // Has at least one digit.

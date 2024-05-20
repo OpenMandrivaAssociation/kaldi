@@ -1,0 +1,302 @@
+diff -up kaldi-vosk/src/base/kaldi-types.h.omv~ kaldi-vosk/src/base/kaldi-types.h
+--- kaldi-vosk/src/base/kaldi-types.h.omv~	2024-05-20 22:20:22.874051950 +0200
++++ kaldi-vosk/src/base/kaldi-types.h	2024-05-20 22:20:38.382210301 +0200
+@@ -39,9 +39,15 @@ typedef float   BaseFloat;
+ // we find in the future lacks stdint.h
+ #include <stdint.h>
+ 
+-// for discussion on what to do if you need compile kaldi
+-// without OpenFST, see the bottom of this this file
+-#include <fst/types.h>
++typedef int8_t   int8;
++typedef int16_t  int16;
++typedef int32_t  int32;
++typedef int64_t  int64;
++
++typedef uint8_t  uint8;
++typedef uint16_t uint16;
++typedef uint32_t uint32;
++typedef uint64_t uint64;
+ 
+ namespace kaldi {
+   using ::int16;
+diff -up kaldi-vosk/src/fstext/kaldi-fst-io-inl.h.omv~ kaldi-vosk/src/fstext/kaldi-fst-io-inl.h
+--- kaldi-vosk/src/fstext/kaldi-fst-io-inl.h.omv~	2024-05-20 22:25:30.469221864 +0200
++++ kaldi-vosk/src/fstext/kaldi-fst-io-inl.h	2024-05-20 22:25:40.205323022 +0200
+@@ -99,7 +99,7 @@ void ReadFstKaldi(std::istream &is, bool
+     fst->DeleteStates();
+     string line;
+     size_t nline = 0;
+-    string separator = FLAGS_fst_field_separator + "\r\n";
++    string separator = FST_FLAGS_fst_field_separator + "\r\n";
+     while (std::getline(is, line)) {
+       nline++;
+       vector<string> col;
+diff -up kaldi-vosk/src/fstext/lattice-weight.h.omv~ kaldi-vosk/src/fstext/lattice-weight.h
+--- kaldi-vosk/src/fstext/lattice-weight.h.omv~	2024-05-20 22:26:07.989611924 +0200
++++ kaldi-vosk/src/fstext/lattice-weight.h	2024-05-20 22:26:10.569638767 +0200
+@@ -396,8 +396,8 @@ inline bool ApproxEqual(const LatticeWei
+ template <class FloatType>
+ inline std::ostream &operator <<(std::ostream &strm, const LatticeWeightTpl<FloatType> &w) {
+   LatticeWeightTpl<FloatType>::WriteFloatType(strm, w.Value1());
+-  CHECK(FLAGS_fst_weight_separator.size() == 1);
+-  strm << FLAGS_fst_weight_separator[0]; // comma by default;
++  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
++  strm << FST_FLAGS_fst_weight_separator[0]; // comma by default;
+   // may or may not be settable from Kaldi programs.
+   LatticeWeightTpl<FloatType>::WriteFloatType(strm, w.Value2());
+   return strm;
+@@ -405,9 +405,9 @@ inline std::ostream &operator <<(std::os
+ 
+ template <class FloatType>
+ inline std::istream &operator >>(std::istream &strm, LatticeWeightTpl<FloatType> &w1) {
+-  CHECK(FLAGS_fst_weight_separator.size() == 1);
++  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
+   // separator defaults to ','
+-  return w1.ReadNoParen(strm, FLAGS_fst_weight_separator[0]);
++  return w1.ReadNoParen(strm, FST_FLAGS_fst_weight_separator[0]);
+ }
+ 
+ 
+@@ -728,8 +728,8 @@ inline CompactLatticeWeightTpl<WeightTyp
+ template <class WeightType, class IntType>
+ inline std::ostream &operator <<(std::ostream &strm, const CompactLatticeWeightTpl<WeightType, IntType> &w) {
+   strm << w.Weight();
+-  CHECK(FLAGS_fst_weight_separator.size() == 1);
+-  strm << FLAGS_fst_weight_separator[0]; // comma by default.
++  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
++  strm << FST_FLAGS_fst_weight_separator[0]; // comma by default.
+   for(size_t i = 0; i < w.String().size(); i++) {
+     strm << w.String()[i];
+     if (i+1 < w.String().size())
+@@ -745,8 +745,8 @@ inline std::istream &operator >>(std::is
+   if (strm.fail()) {
+     return strm;
+   }
+-  CHECK(FLAGS_fst_weight_separator.size() == 1);
+-  size_t pos = s.find_last_of(FLAGS_fst_weight_separator); // normally ","
++  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
++  size_t pos = s.find_last_of(FST_FLAGS_fst_weight_separator); // normally ","
+   if (pos == std::string::npos) {
+     strm.clear(std::ios::badbit);
+     return strm;
+diff -up kaldi-vosk/src/fstext/trivial-factor-weight.h.omv~ kaldi-vosk/src/fstext/trivial-factor-weight.h
+--- kaldi-vosk/src/fstext/trivial-factor-weight.h.omv~	2024-05-20 22:26:38.505929592 +0200
++++ kaldi-vosk/src/fstext/trivial-factor-weight.h	2024-05-20 22:26:43.089977342 +0200
+@@ -390,7 +390,7 @@ class ArcIterator< TrivialFactorWeightFs
+ template <class A, class F>
+ inline void TrivialFactorWeightFst<A, F>::InitStateIterator(
+     StateIteratorData<A> *data) const {
+-  data->base = fst::make_unique<StateIterator<TrivialFactorWeightFst<A, F> > >(*this);
++  data->base = std::make_unique<StateIterator<TrivialFactorWeightFst<A, F> > >(*this);
+ }
+ 
+ 
+diff -up kaldi-vosk/src/kws/kws-functions.cc.omv~ kaldi-vosk/src/kws/kws-functions.cc
+--- kaldi-vosk/src/kws/kws-functions.cc.omv~	2024-05-20 22:33:53.266485536 +0200
++++ kaldi-vosk/src/kws/kws-functions.cc	2024-05-20 22:34:01.074567738 +0200
+@@ -175,7 +175,7 @@ bool CreateFactorTransducer(const Compac
+ 
+   // Now we map the CompactLattice to VectorFst<KwsProductArc>. We drop the
+   // alignment information and only keep the negated log-probs
+-  Map(clat, factor_transducer, CompactLatticeToKwsProductFstMapper());
++  ArcMap(clat, factor_transducer, CompactLatticeToKwsProductFstMapper());
+ 
+   // Now do the weight pushing manually on the CompactLattice format. Note that
+   // the alphas and betas in Kaldi are stored as the log-probs, not the negated
+@@ -366,7 +366,7 @@ void MaybeDoSanityCheck(const KwsProduct
+   if (GetVerboseLevel() < 2) return;
+   KwsLexicographicFst index_transducer;
+ 
+-  Map(product_transducer,
++  ArcMap(product_transducer,
+       &index_transducer,
+       KwsProductFstToKwsLexicographicFstMapper());
+ 
+diff -up kaldi-vosk/src/kws/kws-functions2.cc.omv~ kaldi-vosk/src/kws/kws-functions2.cc
+--- kaldi-vosk/src/kws/kws-functions2.cc.omv~	2024-05-20 22:33:26.094199551 +0200
++++ kaldi-vosk/src/kws/kws-functions2.cc	2024-05-20 22:33:29.466235035 +0200
+@@ -92,7 +92,7 @@ void DoFactorMerging(KwsProductFst *fact
+ 
+   Decode(&dest_transducer, encoder);
+ 
+-  Map(dest_transducer, index_transducer, KwsProductFstToKwsLexicographicFstMapper());
++  ArcMap(dest_transducer, index_transducer, KwsProductFstToKwsLexicographicFstMapper());
+ }
+ 
+ void DoFactorDisambiguation(KwsLexicographicFst *index_transducer) {
+diff -up kaldi-vosk/src/lat/arctic-weight.h.omv~ kaldi-vosk/src/lat/arctic-weight.h
+--- kaldi-vosk/src/lat/arctic-weight.h.omv~	2024-05-20 22:33:04.773975247 +0200
++++ kaldi-vosk/src/lat/arctic-weight.h	2024-05-20 22:33:14.030072618 +0200
+@@ -50,7 +50,7 @@ class ArcticWeightTpl : public FloatWeig
+ 
+   static const std::string &Type() {
+     static const std::string type = std::string("arctic") +
+-        FloatWeightTpl<T>::GetPrecisionString();
++        std::string(FloatWeightTpl<T>::GetPrecisionString());
+     return type;
+   }
+ 
+diff -up kaldi-vosk/src/lat/kaldi-lattice.cc.omv~ kaldi-vosk/src/lat/kaldi-lattice.cc
+--- kaldi-vosk/src/lat/kaldi-lattice.cc.omv~	2024-05-20 22:35:51.695733313 +0200
++++ kaldi-vosk/src/lat/kaldi-lattice.cc	2024-05-20 22:36:01.287834461 +0200
+@@ -114,7 +114,7 @@ class LatticeReader {
+     CompactLattice *cfst = new CompactLattice();
+     string line;
+     size_t nline = 0;
+-    string separator = FLAGS_fst_field_separator + "\r\n";
++    string separator = FST_FLAGS_fst_field_separator + "\r\n";
+     while (std::getline(is, line)) {
+       nline++;
+       vector<string> col;
+diff -up kaldi-vosk/src/lat/lattice-functions-transition-model.cc.omv~ kaldi-vosk/src/lat/lattice-functions-transition-model.cc
+--- kaldi-vosk/src/lat/lattice-functions-transition-model.cc.omv~	2024-05-20 22:27:23.954403349 +0200
++++ kaldi-vosk/src/lat/lattice-functions-transition-model.cc	2024-05-20 22:27:30.470471332 +0200
+@@ -248,13 +248,13 @@ bool TestWordAlignedLattice(const WordAl
+   int32 num_paths = 5, seed = Rand(), max_path_length = -1;
+   BaseFloat delta = 0.2; // some lattices have large costs -> use large delta.
+ 
+-  FLAGS_v = GetVerboseLevel(); // set the OpenFst verbose level to the Kaldi
++  FST_FLAGS_v = GetVerboseLevel(); // set the OpenFst verbose level to the Kaldi
+                                // verbose level.
+   if (!RandEquivalent(clat, aligned_clat, num_paths, delta, seed, max_path_length)) {
+     KALDI_WARN << "Equivalence test failed during lattice alignment.";
+     return false;
+   }
+-  FLAGS_v = 0;
++  FST_FLAGS_v = 0;
+ 
+   return (num_err == 0);
+ }
+diff -up kaldi-vosk/src/fstext/determinize-star-test.cc.omv~ kaldi-vosk/src/fstext/determinize-star-test.cc
+--- kaldi-vosk/src/fstext/determinize-star-test.cc.omv~	2024-05-20 22:43:14.028407062 +0200
++++ kaldi-vosk/src/fstext/determinize-star-test.cc	2024-05-20 22:43:17.716446090 +0200
+@@ -413,7 +413,7 @@ template<class Arc>  void TestMinimize()
+       fstprinter.Print(std::cout, "standard output");
+     }
+ 
+-    Map(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
++    ArcMap(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
+ 
+     {
+       std::cout <<" printing after converting back to regular FST\n";
+diff -up kaldi-vosk/src/fstext/fstext-utils-inl.h.omv~ kaldi-vosk/src/fstext/fstext-utils-inl.h
+--- kaldi-vosk/src/fstext/fstext-utils-inl.h.omv~	2024-05-20 22:44:31.401226016 +0200
++++ kaldi-vosk/src/fstext/fstext-utils-inl.h	2024-05-20 22:44:37.469289696 +0200
+@@ -215,7 +215,7 @@ void MapInputSymbols(const std::vector<I
+   // false == don't copy the "symbol_mapping", retain pointer--
+   // safe since short-lived object.
+   MapInputSymbolsMapper<Arc, I> mapper(symbol_mapping, false);
+-  Map(fst, mapper);
++  ArcMap(fst, mapper);
+ }
+ 
+ template<class Arc, class I>
+diff -up kaldi-vosk/src/fstext/table-matcher.h.omv~ kaldi-vosk/src/fstext/table-matcher.h
+--- kaldi-vosk/src/fstext/table-matcher.h.omv~	2024-05-20 22:46:52.790585533 +0200
++++ kaldi-vosk/src/fstext/table-matcher.h	2024-05-20 22:47:04.226696456 +0200
+@@ -215,7 +215,7 @@ class TableMatcherImpl : public MatcherB
+     return NULL;
+   }
+ 
+-  virtual uint64 Properties(uint64 props) const { return props; } // simple matcher that does
++  virtual uint64_t Properties(uint64_t props) const { return props; } // simple matcher that does
+   // not change its FST, so properties are properties of FST it is applied to
+ 
+  private:
+@@ -283,7 +283,7 @@ class TableMatcher : public MatcherBase<
+     return new TableMatcher<FST, BackoffMatcher> (*this, safe);
+   }
+ 
+-  virtual uint64 Properties(uint64 props) const { return impl_->Properties(props); } // simple matcher that does
++  virtual uint64_t Properties(uint64_t props) const { return impl_->Properties(props); } // simple matcher that does
+   // not change its FST, so properties are properties of FST it is applied to
+  private:
+   std::shared_ptr<Impl> impl_;
+diff -up kaldi-vosk/src/fstext/trivial-factor-weight-test.cc.omv~ kaldi-vosk/src/fstext/trivial-factor-weight-test.cc
+--- kaldi-vosk/src/fstext/trivial-factor-weight-test.cc.omv~	2024-05-20 22:45:34.981836455 +0200
++++ kaldi-vosk/src/fstext/trivial-factor-weight-test.cc	2024-05-20 22:45:41.601899786 +0200
+@@ -142,7 +142,7 @@ template<class Arc>  void TestFactor() {
+       fstprinter.Print(std::cout, "standard output");
+     }
+ 
+-    Map(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
++    ArcMap(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
+ 
+     {
+       std::cout <<" printing after converting back to regular FST\n";
+@@ -152,7 +152,7 @@ template<class Arc>  void TestFactor() {
+ 
+ 
+     VectorFst<GallicArc<Arc> > new_gallic_fst;
+-    Map(ofst_star, &new_gallic_fst, ToGallicMapper<Arc, GALLIC_LEFT>());
++    ArcMap(ofst_star, &new_gallic_fst, ToGallicMapper<Arc, GALLIC_LEFT>());
+ 
+     assert(RandEquivalent(gallic_fst, new_gallic_fst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
+ 
+diff -up kaldi-vosk/src/latbin/lattice-oracle.cc.omv~ kaldi-vosk/src/latbin/lattice-oracle.cc
+--- kaldi-vosk/src/latbin/lattice-oracle.cc.omv~	2024-05-20 22:50:12.600549007 +0200
++++ kaldi-vosk/src/latbin/lattice-oracle.cc	2024-05-20 22:50:17.760600345 +0200
+@@ -66,7 +66,7 @@ void ConvertLatticeToUnweightedAcceptor(
+   // first convert from  lattice to normal FST
+   fst::ConvertLattice(ilat, ofst);
+   // remove weights, project to output, sort according to input arg
+-  fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>());
++  fst::ArcMap(ofst, fst::RmWeightMapper<fst::StdArc>());
+   fst::Project(ofst, fst::ProjectType::OUTPUT);  // The words are on the output side
+   fst::Relabel(ofst, wildcards, wildcards);
+   fst::RmEpsilon(ofst);   // Don't tolerate epsilons as they make it hard to
+diff -up kaldi-vosk/src/kwsbin/kws-search.cc.omv~ kaldi-vosk/src/kwsbin/kws-search.cc
+--- kaldi-vosk/src/kwsbin/kws-search.cc.omv~	2024-05-20 23:03:22.228610208 +0200
++++ kaldi-vosk/src/kwsbin/kws-search.cc	2024-05-20 23:03:27.988669928 +0200
+@@ -305,7 +305,7 @@ int main(int argc, char *argv[]) {
+ 
+       KwsLexicographicFst keyword_fst;
+       KwsLexicographicFst result_fst;
+-      Map(keyword, &keyword_fst, VectorFstToKwsLexicographicFstMapper());
++      ArcMap(keyword, &keyword_fst, VectorFstToKwsLexicographicFstMapper());
+       Compose(keyword_fst, index, &result_fst);
+ 
+       if (stats_wspecifier != "") {
+diff -up kaldi-vosk/src/latbin/lattice-compose.cc.omv~ kaldi-vosk/src/latbin/lattice-compose.cc
+--- kaldi-vosk/src/latbin/lattice-compose.cc.omv~	2024-05-20 23:00:13.202655072 +0200
++++ kaldi-vosk/src/latbin/lattice-compose.cc	2024-05-20 23:01:32.591475023 +0200
+@@ -126,9 +126,9 @@ int main(int argc, char *argv[]) {
+       // with all the cost on the first member of the pair (since we're
+       // assuming it's a graph weight).
+       fst::CacheOptions cache_opts(true, num_states_cache);
+-      fst::MapFstOptions mapfst_opts(cache_opts);
++      fst::ArcMapFstOptions mapfst_opts(cache_opts);
+       fst::StdToLatticeMapper<BaseFloat> mapper;
+-      fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
++      fst::ArcMapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
+           mapped_fst2(*fst2, mapper, mapfst_opts);
+ 
+       for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
+@@ -265,9 +265,9 @@ int main(int argc, char *argv[]) {
+         // with all the cost on the first member of the pair (since we're
+         // assuming it's a graph weight).
+         fst::CacheOptions cache_opts(true, num_states_cache);
+-        fst::MapFstOptions mapfst_opts(cache_opts);
++        fst::ArcMapFstOptions mapfst_opts(cache_opts);
+         fst::StdToLatticeMapper<BaseFloat> mapper;
+-        fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
++        fst::ArcMapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
+             mapped_fst2(fst2, mapper, mapfst_opts);
+ 
+         // sort lat1 on olabel.
+diff -up kaldi-vosk/src/latbin/lattice-lmrescore.cc.omv~ kaldi-vosk/src/latbin/lattice-lmrescore.cc
+--- kaldi-vosk/src/latbin/lattice-lmrescore.cc.omv~	2024-05-20 22:58:41.821713812 +0200
++++ kaldi-vosk/src/latbin/lattice-lmrescore.cc	2024-05-20 22:59:38.346295692 +0200
+@@ -75,9 +75,9 @@ int main(int argc, char *argv[]) {
+     // with all the cost on the first member of the pair (since it's a graph
+     // weight).
+     fst::CacheOptions cache_opts(true, num_states_cache);
+-    fst::MapFstOptions mapfst_opts(cache_opts);
++    fst::ArcMapFstOptions mapfst_opts(cache_opts);
+     fst::StdToLatticeMapper<BaseFloat> mapper;
+-    fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
++    fst::ArcMapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
+         lm_fst(*std_lm_fst, mapper, mapfst_opts);
+     delete std_lm_fst;
+ 

@@ -1,0 +1,24 @@
+From e9c3bca9a71fc82c41b990be09fb367bd69f5562 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sun, 15 May 2022 22:10:45 +0200
+Subject: [PATCH] Silence debug message
+
+---
+ src/nnet3/nnet-compile-looped.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/nnet3/nnet-compile-looped.cc b/src/nnet3/nnet-compile-looped.cc
+index 697aceea07d..d7f3e9f12ba 100644
+--- a/src/nnet3/nnet-compile-looped.cc
++++ b/src/nnet3/nnet-compile-looped.cc
+@@ -342,8 +342,8 @@ void CompileLooped(const Nnet &nnet,
+     if (CompileLoopedInternal(nnet, optimize_opts,
+                              request1, request2, request3,
+                              num_requests, computation)) {
+-      KALDI_LOG << "Spent " << timer.Elapsed()
+-                << " seconds in looped compilation.";
++      KALDI_VLOG(2) << "Spent " << timer.Elapsed()
++                   << " seconds in looped compilation.";
+       return;
+     } else {
+       KALDI_VLOG(2) << "Looped compilation failed with "

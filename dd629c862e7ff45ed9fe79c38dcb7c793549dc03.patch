@@ -1,0 +1,51 @@
+From dd629c862e7ff45ed9fe79c38dcb7c793549dc03 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Tue, 15 Feb 2022 13:38:05 +0100
+Subject: [PATCH] Expose raw lattice
+
+---
+ src/online2/online-nnet3-decoding.cc | 6 ++++++
+ src/online2/online-nnet3-decoding.h  | 6 ++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/src/online2/online-nnet3-decoding.cc b/src/online2/online-nnet3-decoding.cc
+index 4af8bc5149e..0f55da86f21 100644
+--- a/src/online2/online-nnet3-decoding.cc
++++ b/src/online2/online-nnet3-decoding.cc
+@@ -78,6 +78,12 @@ void SingleUtteranceNnet3DecoderTpl<FST>::GetLattice(bool end_of_utterance,
+       trans_model_, &raw_lat, lat_beam, clat, decoder_opts_.det_opts);
+ }
+ 
++template <typename FST>
++void SingleUtteranceNnet3DecoderTpl<FST>::GetRawLattice(bool end_of_utterance,
++                                                        Lattice *lat) const {
++  decoder_.GetRawLattice(lat, end_of_utterance);
++}
++
+ template <typename FST>
+ void SingleUtteranceNnet3DecoderTpl<FST>::GetBestPath(bool end_of_utterance,
+                                               Lattice *best_path) const {
+diff --git a/src/online2/online-nnet3-decoding.h b/src/online2/online-nnet3-decoding.h
+index 9adf77fcb56..94a4183cbed 100644
+--- a/src/online2/online-nnet3-decoding.h
++++ b/src/online2/online-nnet3-decoding.h
+@@ -84,6 +84,10 @@ class SingleUtteranceNnet3DecoderTpl {
+   void GetLattice(bool end_of_utterance,
+                   CompactLattice *clat) const;
+ 
++  // Extra
++  void GetRawLattice(bool end_of_utterance,
++                     Lattice *lat) const;
++
+   /// Outputs an FST corresponding to the single best path through the current
+   /// lattice. If "use_final_probs" is true AND we reached the final-state of
+   /// the graph then it will include those as final-probs, else it will treat
+@@ -98,6 +102,8 @@ class SingleUtteranceNnet3DecoderTpl {
+ 
+   const LatticeFasterOnlineDecoderTpl<FST> &Decoder() const { return decoder_; }
+ 
++  nnet3::DecodableAmNnetLoopedOnline &Decodable() { return decodable_; }
++
+   ~SingleUtteranceNnet3DecoderTpl() { }
+  private:
+ 

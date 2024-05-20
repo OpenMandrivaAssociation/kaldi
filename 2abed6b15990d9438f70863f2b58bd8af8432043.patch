@@ -1,0 +1,22 @@
+From 2abed6b15990d9438f70863f2b58bd8af8432043 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Wed, 15 Mar 2023 13:02:05 +0100
+Subject: [PATCH] Reduce number of ivector extractor threads
+
+---
+ src/util/kaldi-thread.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/util/kaldi-thread.cc b/src/util/kaldi-thread.cc
+index 2405d01f15f..4573e24f1bb 100644
+--- a/src/util/kaldi-thread.cc
++++ b/src/util/kaldi-thread.cc
+@@ -22,7 +22,7 @@
+ #include "util/kaldi-thread.h"
+ 
+ namespace kaldi {
+-int32 g_num_threads = 8;  // Initialize this global variable.
++int32 g_num_threads = 4;  // Initialize this global variable.
+ 
+ MultiThreadable::~MultiThreadable() {
+   // default implementation does nothing

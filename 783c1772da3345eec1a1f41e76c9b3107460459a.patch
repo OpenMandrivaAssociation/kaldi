@@ -1,0 +1,190 @@
+From 783c1772da3345eec1a1f41e76c9b3107460459a Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Tue, 22 Dec 2020 21:25:05 +0100
+Subject: [PATCH] Update to Openfst 1.8.0, openblas 0.3.13, opengrm 0.3.12
+
+---
+ src/chain/chain-supervision.cc   |  2 +-
+ src/fstext/fstext-utils-inl.h    |  2 +-
+ src/fstext/fstext-utils.h        |  2 +-
+ src/fstext/kaldi-fst-io.cc       |  2 +-
+ src/fstext/lattice-utils-inl.h   |  4 ++--
+ src/latbin/lattice-interp.cc     |  2 +-
+ src/latbin/lattice-oracle.cc     |  4 ++--
+ src/latbin/lattice-project.cc    |  2 +-
+ src/latbin/lattice-to-fst.cc     |  2 +-
+ tools/extras/install_openblas.sh |  2 +-
+ tools/extras/install_opengrm.sh  | 16 ++++++++--------
+ 11 files changed, 20 insertions(+), 20 deletions(-)
+
+diff --git a/src/chain/chain-supervision.cc b/src/chain/chain-supervision.cc
+index b29000a448c..fa391bd0c05 100644
+--- a/src/chain/chain-supervision.cc
++++ b/src/chain/chain-supervision.cc
+@@ -385,7 +385,7 @@ bool ProtoSupervisionToSupervision(
+   if (convert_to_pdfs) {
+     // at this point supervision->fst will have pdf-ids plus one as the olabels,
+     // but still transition-ids as the ilabels.  Copy olabels to ilabels.
+-    fst::Project(&(supervision->fst), fst::PROJECT_OUTPUT);
++    fst::Project(&(supervision->fst), fst::ProjectType::OUTPUT);
+   }
+ 
+   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
+diff --git a/src/fstext/fstext-utils-inl.h b/src/fstext/fstext-utils-inl.h
+index d877c03e1ae..44e641a3f20 100644
+--- a/src/fstext/fstext-utils-inl.h
++++ b/src/fstext/fstext-utils-inl.h
+@@ -163,7 +163,7 @@ void RemoveSomeInputSymbols(const std::vector<I> &to_remove,
+                             MutableFst<Arc> *fst) {
+   KALDI_ASSERT_IS_INTEGER_TYPE(I);
+   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
+-  Map(fst, mapper);
++  ArcMap(fst, mapper);
+ }
+ 
+ template<class Arc, class I>
+diff --git a/src/fstext/fstext-utils.h b/src/fstext/fstext-utils.h
+index 5789dbe7cc3..db14ddd3576 100644
+--- a/src/fstext/fstext-utils.h
++++ b/src/fstext/fstext-utils.h
+@@ -113,7 +113,7 @@ void PushInLog(VectorFst<StdArc> *fst, uint32 ptype, float delta = kDelta) {
+ template<class Arc>
+ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
+ 
+-  Map(fst, QuantizeMapper<Arc>(delta));
++  ArcMap(fst, QuantizeMapper<Arc>(delta));
+   EncodeMapper<Arc> encoder(kEncodeLabels | kEncodeWeights, ENCODE);
+   Encode(fst, &encoder);
+   internal::AcceptorMinimize(fst);
+diff --git a/src/fstext/kaldi-fst-io.cc b/src/fstext/kaldi-fst-io.cc
+index 61d6cc74724..626e6508a39 100644
+--- a/src/fstext/kaldi-fst-io.cc
++++ b/src/fstext/kaldi-fst-io.cc
+@@ -132,7 +132,7 @@ fst::VectorFst<fst::StdArc> *ReadAndPrepareLmFst(std::string rxfilename) {
+     // symbol #0 on the input symbols of the backoff arc, and projection will
+     // replace them with epsilons which is what is on the output symbols of
+     // those arcs.
+-    fst::Project(ans, fst::PROJECT_OUTPUT);
++    fst::Project(ans, fst::ProjectType::OUTPUT);
+   }
+   if (ans->Properties(fst::kILabelSorted, true) == 0) {
+     // Make sure LM is sorted on ilabel.
+diff --git a/src/fstext/lattice-utils-inl.h b/src/fstext/lattice-utils-inl.h
+index c97a538dd1d..03ac9947c5c 100644
+--- a/src/fstext/lattice-utils-inl.h
++++ b/src/fstext/lattice-utils-inl.h
+@@ -268,9 +268,9 @@ void ConvertFstToLattice(
+     MutableFst<ArcTpl<LatticeWeightTpl<Real> > > *ofst) {
+   int32 num_states_cache = 50000;
+   fst::CacheOptions cache_opts(true, num_states_cache);
+-  fst::MapFstOptions mapfst_opts(cache_opts);
++  fst::ArcMapFstOptions mapfst_opts(cache_opts);
+   StdToLatticeMapper<Real> mapper;
+-  MapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
++  ArcMapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
+          StdToLatticeMapper<Real> > map_fst(ifst, mapper, mapfst_opts);
+   *ofst = map_fst;
+ }
+diff --git a/src/latbin/lattice-interp.cc b/src/latbin/lattice-interp.cc
+index 41e1b32658f..b0cd9b433b9 100644
+--- a/src/latbin/lattice-interp.cc
++++ b/src/latbin/lattice-interp.cc
+@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
+ 
+         Lattice lat2;
+         ConvertLattice(clat2, &lat2);
+-        fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.
++        fst::Project(&lat2, fst::ProjectType::OUTPUT); // project on words.
+         ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha), &lat2);
+         ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
+ 
+diff --git a/src/latbin/lattice-oracle.cc b/src/latbin/lattice-oracle.cc
+index 5f2513131d7..7fe86e64939 100644
+--- a/src/latbin/lattice-oracle.cc
++++ b/src/latbin/lattice-oracle.cc
+@@ -67,7 +67,7 @@ void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice &ilat,
+   fst::ConvertLattice(ilat, ofst);
+   // remove weights, project to output, sort according to input arg
+   fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>());
+-  fst::Project(ofst, fst::PROJECT_OUTPUT);  // The words are on the output side
++  fst::Project(ofst, fst::ProjectType::OUTPUT);  // The words are on the output side
+   fst::Relabel(ofst, wildcards, wildcards);
+   fst::RmEpsilon(ofst);   // Don't tolerate epsilons as they make it hard to
+                           // tally errors
+@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
+           fst::ArcSort(&clat, fst::ILabelCompare<CompactLatticeArc>());
+           fst::Compose(oracle_clat_mask, clat, &oracle_clat_mask);
+           fst::ShortestPath(oracle_clat_mask, &oracle_clat);
+-          fst::Project(&oracle_clat, fst::PROJECT_OUTPUT);
++          fst::Project(&oracle_clat, fst::ProjectType::OUTPUT);
+           TopSortCompactLatticeIfNeeded(&oracle_clat);
+ 
+           if (oracle_clat.Start() == fst::kNoStateId) {
+diff --git a/src/latbin/lattice-project.cc b/src/latbin/lattice-project.cc
+index b74ab177594..31b63692fd0 100644
+--- a/src/latbin/lattice-project.cc
++++ b/src/latbin/lattice-project.cc
+@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
+         RemoveAlignmentsFromCompactLattice(&clat);
+         Lattice lat;
+         ConvertLattice(clat, &lat);
+-        fst::Project(&lat, fst::PROJECT_OUTPUT); // project on words.        
++        fst::Project(&lat, fst::ProjectType::OUTPUT); // project on words.        
+         lattice_writer.Write(key, lat);
+         n_done++;
+       }
+diff --git a/src/latbin/lattice-to-fst.cc b/src/latbin/lattice-to-fst.cc
+index 0d2ac29a99b..39a9ec97f38 100644
+--- a/src/latbin/lattice-to-fst.cc
++++ b/src/latbin/lattice-to-fst.cc
+@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
+         // extra states because already removed alignments.
+         ConvertLattice(lat, &fst); // this adds up the (lm,acoustic) costs to get
+         // the normal (tropical) costs.
+-        Project(&fst, fst::PROJECT_OUTPUT); // Because in the standard Lattice format,
++        Project(&fst, fst::ProjectType::OUTPUT); // Because in the standard Lattice format,
+         // the words are on the output, and we want the word labels.
+       }
+       if (rm_eps) RemoveEpsLocal(&fst);
+diff --git a/tools/extras/install_opengrm.sh b/tools/extras/install_opengrm.sh
+index b8fdd48ba8d..add97274cfe 100755
+--- a/tools/extras/install_opengrm.sh
++++ b/tools/extras/install_opengrm.sh
+@@ -8,29 +8,29 @@
+ 
+ echo "****() Installing OpenGrm"
+ 
+-if [ ! -e ngram-1.3.7.tar.gz ]; then
+-    echo "Could not find OpenGrm tarball ngram-1.3.7.tar.gz "
++if [ ! -e ngram-1.3.12.tar.gz ]; then
++    echo "Could not find OpenGrm tarball ngram-1.3.12.tar.gz "
+     echo "Trying to download it via wget!"
+ 
+     if ! which wget >&/dev/null; then
+         echo "This script requires you to first install wget"
+-        echo "You can also just download ngram-1.3.7.tar.gz from"
++        echo "You can also just download ngram-1.3.12.tar.gz from"
+         echo "http://www.opengrm.org/twiki/bin/view/GRM/NGramDownload"
+         exit 1;
+     fi
+ 
+-   wget -T 10 -t 3 -c http://www.opengrm.org/twiki/pub/GRM/NGramDownload/ngram-1.3.7.tar.gz
++   wget -T 10 -t 3 -c http://www.opengrm.org/twiki/pub/GRM/NGramDownload/ngram-1.3.12.tar.gz
+ 
+-   if [ ! -e ngram-1.3.7.tar.gz ]; then
+-        echo "Download of ngram-1.3.7.tar.gz - failed!"
++   if [ ! -e ngram-1.3.12.tar.gz ]; then
++        echo "Download of ngram-1.3.12.tar.gz - failed!"
+         echo "Aborting script. Please download and install OpenGrm manually!"
+     exit 1;
+    fi
+ fi
+ 
+-tar -xovzf ngram-1.3.7.tar.gz|| exit 1
++tar -xovzf ngram-1.3.12.tar.gz|| exit 1
+ 
+-cd ngram-1.3.7
++cd ngram-1.3.12
+ OPENFSTPREFIX=`pwd`/../openfst
+ LDFLAGS="-L${OPENFSTPREFIX}/lib" CXXFLAGS="-I${OPENFSTPREFIX}/include" ./configure --prefix ${OPENFSTPREFIX}
+ make; make install

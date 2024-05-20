@@ -1,0 +1,317 @@
+From 531c651f629442220d3efada3da52913a7c95b11 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Wed, 17 Aug 2022 18:58:37 +0200
+Subject: [PATCH] fstproject options changed in openfst 1.7.0
+
+---
+ egs/babel/s5d/local/syllab/lattice_word2syll.sh        |  8 ++++----
+ egs/gp/s1/utils/lmrescore.sh                           | 10 +++++-----
+ .../s5/fairseq_ltlm/recipes/scripts/prepare_egs.sh     |  2 +-
+ egs/mini_librispeech/s5/local/grammar/simple_demo.sh   |  2 +-
+ .../s5/local/grammar/simple_demo_silprobs.sh           |  2 +-
+ egs/wsj/s5/steps/decode_biglm.sh                       |  4 ++--
+ egs/wsj/s5/steps/decode_fromlats.sh                    |  2 +-
+ egs/wsj/s5/steps/decode_sgmm2_fromlats.sh              |  2 +-
+ egs/wsj/s5/steps/lmrescore.sh                          | 10 +++++-----
+ egs/wsj/s5/steps/lmrescore_const_arpa.sh               |  2 +-
+ .../s5/steps/lmrescore_const_arpa_undeterminized.sh    |  2 +-
+ egs/wsj/s5/steps/lmrescore_rnnlm_lat.sh                |  2 +-
+ .../s5/steps/pytorchnn/lmrescore_lattice_pytorchnn.sh  |  2 +-
+ .../s5/steps/pytorchnn/lmrescore_nbest_pytorchnn.sh    |  2 +-
+ egs/wsj/s5/steps/rnnlmrescore.sh                       |  2 +-
+ egs/wsj/s5/steps/tfrnnlm/lmrescore_rnnlm_lat.sh        |  2 +-
+ egs/wsj/s5/utils/lang/make_unk_lm.sh                   |  2 +-
+ 17 files changed, 29 insertions(+), 29 deletions(-)
+
+diff --git a/egs/babel/s5d/local/syllab/lattice_word2syll.sh b/egs/babel/s5d/local/syllab/lattice_word2syll.sh
+index 6e20e78ff73..c643b55d527 100755
+--- a/egs/babel/s5d/local/syllab/lattice_word2syll.sh
++++ b/egs/babel/s5d/local/syllab/lattice_word2syll.sh
+@@ -30,25 +30,25 @@ if [ -f $olang/lex.words2syllabs.fst ] ; then
+ 
+   $cmd JOB=1:$nj $output/log/convert.JOB.log \
+     lattice-push --push-strings ark:"gunzip -c $input/lat.JOB.gz|" ark:- \| \
+-      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_output=true $ilang/G.fst|" ark:- \| \
++      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_type=output $ilang/G.fst|" ark:- \| \
+       lattice-compose ark:- $output/L.fst  ark:- \| \
+       lattice-determinize-pruned --beam=8 --acoustic-scale=0.1 ark:-  ark:- \| \
+       lattice-minimize ark:- "ark:|gzip -c > $output/lat.JOB.gz"
+       #lattice-minimize ark:- ark:- \| \
+-      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_output=true $olang/G.fst|" "ark:|gzip -c > $output/lat.JOB.gz"
++      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_type=output $olang/G.fst|" "ark:|gzip -c > $output/lat.JOB.gz"
+ else
+   #for phonemes.... (IIRC)
+   fstreverse $olang/L.fst | fstminimize | fstreverse > $output/L.fst
+   $cmd JOB=1:$nj $output/log/convert.JOB.log \
+     lattice-push --push-strings ark:"gunzip -c $input/lat.JOB.gz|" ark:- \| \
+-      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_output=true $ilang/G.fst|" ark:- \| \
++      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_type=output $ilang/G.fst|" ark:- \| \
+       lattice-align-words $ilang/phones/word_boundary.int $input/../final.mdl ark:- ark:-  \| \
+       lattice-to-phone-lattice --replace-words $input/../final.mdl ark:- ark:- \| \
+       lattice-align-phones $input/../final.mdl  ark:- ark:- \| \
+       lattice-compose ark:- $output/L.fst ark:- \|\
+       lattice-determinize-pruned --beam=$beam --acoustic-scale=$acwt ark:-  ark:-\| \
+       lattice-minimize ark:- "ark:|gzip -c > $output/lat.JOB.gz"
+-      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_output=true $olang/G.fst|" ark:"|gzip -c > $output/lat.JOB.gz"
++      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_type=output $olang/G.fst|" ark:"|gzip -c > $output/lat.JOB.gz"
+ fi
+ 
+   #lattice-1best ark:- ark:-| nbest-to-linear ark:- ark:/dev/null ark,t:- \
+diff --git a/egs/gp/s1/utils/lmrescore.sh b/egs/gp/s1/utils/lmrescore.sh
+index 9e706395c4f..1a73f0c04a0 100755
+--- a/egs/gp/s1/utils/lmrescore.sh
++++ b/egs/gp/s1/utils/lmrescore.sh
+@@ -85,8 +85,8 @@ newlm=$newlang/G.fst
+ ! ls $indir/lat.*.gz >/dev/null && echo "No lattices input directory $indir" && exit 1;
+ 
+ 
+-oldlmcommand="fstproject --project_output=true $oldlm |"
+-newlmcommand="fstproject --project_output=true $newlm |"
++oldlmcommand="fstproject --project_type=output $oldlm |"
++newlmcommand="fstproject --project_type=output $newlm |"
+ 
+ mkdir -p $outdir;
+ 
+@@ -124,10 +124,10 @@ case "$mode" in
+     submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
+       $sjopts gunzip -c $lat \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \
++      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \
+       \| lattice-determinize ark:- ark:- \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+-      lattice-compose ark:- "fstproject --project_output=true $newlm |" ark:- \
++      lattice-compose ark:- "fstproject --project_type=output $newlm |" ark:- \
+       \| lattice-determinize ark:- ark:- \| \
+       gzip -c \>$newlat || error_exit "Error doing LM rescoring."
+     ;;
+@@ -138,7 +138,7 @@ case "$mode" in
+     submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
+       $sjopts gunzip -c $lat \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \
++      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \
+       \| \ lattice-determinize ark:- ark:- \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+       lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \
+diff --git a/egs/librispeech/s5/fairseq_ltlm/recipes/scripts/prepare_egs.sh b/egs/librispeech/s5/fairseq_ltlm/recipes/scripts/prepare_egs.sh
+index 99ac1ada7b0..0d7ed563bf8 100755
+--- a/egs/librispeech/s5/fairseq_ltlm/recipes/scripts/prepare_egs.sh
++++ b/egs/librispeech/s5/fairseq_ltlm/recipes/scripts/prepare_egs.sh
+@@ -100,7 +100,7 @@ fi
+ 
+ if [ -f $g_fst ] && [ "$g_fst_weight" != "0" ] ; then
+ 	echo "Applying negative rescoring with lm $g_fst, weight $g_fst_weight"
+-	lattice_reader="gunzip -c $prunned_lats/lat.JOB.gz | lattice-lmrescore --lm-scale=$g_fst_weight ark:- 'fstproject --project_output=true $g_fst |' ark,t:-"
++	lattice_reader="gunzip -c $prunned_lats/lat.JOB.gz | lattice-lmrescore --lm-scale=$g_fst_weight ark:- 'fstproject --project_type=output $g_fst |' ark,t:-"
+ else
+ 	lattice_reader="gunzip -c $prunned_lats/lat.JOB.gz | lattice-copy ark:- ark,t:- "
+ fi
+diff --git a/egs/mini_librispeech/s5/local/grammar/simple_demo.sh b/egs/mini_librispeech/s5/local/grammar/simple_demo.sh
+index a4edeb8091c..c3a9e3905ae 100755
+--- a/egs/mini_librispeech/s5/local/grammar/simple_demo.sh
++++ b/egs/mini_librispeech/s5/local/grammar/simple_demo.sh
+@@ -160,7 +160,7 @@ if [ $stage -le 6 ]; then
+   echo "$0: will print costs with the two FSTs, for one random path."
+   fstrandgen $tree_dir/grammar1/HCLG.fst > path.fst
+   for x in 1 2; do
+-    fstproject --project_output=false path.fst | fstcompose - $tree_dir/grammar${x}/HCLG.fst | fstcompose - <(fstproject --project_output=true path.fst) > composed.fst
++    fstproject --project_output=false path.fst | fstcompose - $tree_dir/grammar${x}/HCLG.fst | fstcompose - <(fstproject --project_type=output path.fst) > composed.fst
+     start_state=$(fstprint composed.fst | head -n 1 | awk '{print $1}')
+     fstshortestdistance --reverse=true composed.fst | awk -v s=$start_state '{if($1 == s) { print $2; }}'
+   done
+diff --git a/egs/mini_librispeech/s5/local/grammar/simple_demo_silprobs.sh b/egs/mini_librispeech/s5/local/grammar/simple_demo_silprobs.sh
+index 414227f2ad6..7c7232055b3 100755
+--- a/egs/mini_librispeech/s5/local/grammar/simple_demo_silprobs.sh
++++ b/egs/mini_librispeech/s5/local/grammar/simple_demo_silprobs.sh
+@@ -158,7 +158,7 @@ if [ $stage -le 6 ]; then
+   echo "$0: will print costs with the two FSTs, for one random path."
+   fstrandgen $tree_dir/grammar1/HCLG.fst > path.fst
+   for x in 1 2; do
+-    fstproject --project_output=false path.fst | fstcompose - $tree_dir/grammar${x}/HCLG.fst | fstcompose - <(fstproject --project_output=true path.fst) > composed.fst
++    fstproject --project_output=false path.fst | fstcompose - $tree_dir/grammar${x}/HCLG.fst | fstcompose - <(fstproject --project_type=output path.fst) > composed.fst
+     start_state=$(fstprint composed.fst | head -n 1 | awk '{print $1}')
+     fstshortestdistance --reverse=true composed.fst | awk -v s=$start_state '{if($1 == s) { print $2; }}'
+   done
+diff --git a/egs/wsj/s5/steps/decode_biglm.sh b/egs/wsj/s5/steps/decode_biglm.sh
+index f57191ed290..c4f3980bd08 100755
+--- a/egs/wsj/s5/steps/decode_biglm.sh
++++ b/egs/wsj/s5/steps/decode_biglm.sh
+@@ -73,8 +73,8 @@ esac
+ 
+ # fstproject replaces the disambiguation symbol #0, which only appears on the
+ # input side, with the <eps> that appears in the corresponding arcs on the output side.
+-oldlm_cmd="fstproject --project_output=true $oldlm_fst | fstarcsort --sort_type=ilabel |"
+-newlm_cmd="fstproject --project_output=true $newlm_fst | fstarcsort --sort_type=ilabel |"
++oldlm_cmd="fstproject --project_type=output $oldlm_fst | fstarcsort --sort_type=ilabel |"
++newlm_cmd="fstproject --project_type=output $newlm_fst | fstarcsort --sort_type=ilabel |"
+ 
+ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+  gmm-latgen-biglm-faster --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \
+diff --git a/egs/wsj/s5/steps/decode_fromlats.sh b/egs/wsj/s5/steps/decode_fromlats.sh
+index 4822953ea0e..af04948486e 100755
+--- a/egs/wsj/s5/steps/decode_fromlats.sh
++++ b/egs/wsj/s5/steps/decode_fromlats.sh
+@@ -77,7 +77,7 @@ esac
+ 
+ $cmd JOB=1:$nj $dir/log/decode_lats.JOB.log \
+  lattice-to-fst "ark:gunzip -c $olddir/lat.JOB.gz|" ark:- \| \
+-  fsttablecompose "fstproject --project_output=true $lang/G.fst | fstarcsort |" ark:- ark:- \| \
++  fsttablecompose "fstproject --project_type=output $lang/G.fst | fstarcsort |" ark:- ark:- \| \
+   fstdeterminizestar ark:- ark:- \| \
+   compile-train-graphs-fsts --read-disambig-syms=$lang/phones/disambig.int \
+     --batch-size=$batch_size $scale_opts $srcdir/tree $srcdir/final.mdl $lang/L_disambig.fst ark:- ark:- \|  \
+diff --git a/egs/wsj/s5/steps/decode_sgmm2_fromlats.sh b/egs/wsj/s5/steps/decode_sgmm2_fromlats.sh
+index 8fd5c29aa50..703e71b3b57 100755
+--- a/egs/wsj/s5/steps/decode_sgmm2_fromlats.sh
++++ b/egs/wsj/s5/steps/decode_sgmm2_fromlats.sh
+@@ -134,7 +134,7 @@ fi
+ if [ $stage -le 2 ]; then
+   $cmd JOB=1:$nj $dir/log/decode_pass1.JOB.log \
+     lattice-to-fst "ark:gunzip -c $olddir/lat.JOB.gz|" ark:- \| \
+-    fsttablecompose "fstproject --project_output=true $lang/G.fst | fstarcsort |" ark:- ark:- \| \
++    fsttablecompose "fstproject --project_type=output $lang/G.fst | fstarcsort |" ark:- ark:- \| \
+     fstdeterminizestar ark:- ark:- \| \
+     compile-train-graphs-fsts --read-disambig-syms=$lang/phones/disambig.int \
+       --batch-size=$batch_size $scale_opts \
+diff --git a/egs/wsj/s5/steps/lmrescore.sh b/egs/wsj/s5/steps/lmrescore.sh
+index 4fa63e613a3..aed341bb8d9 100755
+--- a/egs/wsj/s5/steps/lmrescore.sh
++++ b/egs/wsj/s5/steps/lmrescore.sh
+@@ -49,8 +49,8 @@ if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+   echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+ fi
+ 
+-oldlmcommand="fstproject --project_output=true $oldlm |"
+-newlmcommand="fstproject --project_output=true $newlm |"
++oldlmcommand="fstproject --project_type=output $oldlm |"
++newlmcommand="fstproject --project_type=output $newlm |"
+ 
+ mkdir -p $outdir/log
+ 
+@@ -84,10 +84,10 @@ case "$mode" in
+     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
+       gunzip -c $indir/lat.JOB.gz \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
++      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
+       lattice-determinize ark:- ark:- \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+-      lattice-compose ark:- "fstproject --project_output=true $newlm |" ark:- \| \
++      lattice-compose ark:- "fstproject --project_type=output $newlm |" ark:- \| \
+       lattice-determinize ark:- ark:- \| \
+       gzip -c \>$outdir/lat.JOB.gz || exit 1;
+     ;;
+@@ -98,7 +98,7 @@ case "$mode" in
+     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
+       gunzip -c $indir/lat.JOB.gz \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
++      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
+       lattice-determinize ark:- ark:- \| \
+       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
+       lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \
+diff --git a/egs/wsj/s5/steps/lmrescore_const_arpa.sh b/egs/wsj/s5/steps/lmrescore_const_arpa.sh
+index 3106261389e..34ecfc9079b 100755
+--- a/egs/wsj/s5/steps/lmrescore_const_arpa.sh
++++ b/egs/wsj/s5/steps/lmrescore_const_arpa.sh
+@@ -45,7 +45,7 @@ if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+   echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+ fi
+ 
+-oldlmcommand="fstproject --project_output=true $oldlm |"
++oldlmcommand="fstproject --project_type=output $oldlm |"
+ 
+ mkdir -p $outdir/log
+ nj=`cat $indir/num_jobs` || exit 1;
+diff --git a/egs/wsj/s5/steps/lmrescore_const_arpa_undeterminized.sh b/egs/wsj/s5/steps/lmrescore_const_arpa_undeterminized.sh
+index 7d4b983e761..b97c9f4ec9c 100755
+--- a/egs/wsj/s5/steps/lmrescore_const_arpa_undeterminized.sh
++++ b/egs/wsj/s5/steps/lmrescore_const_arpa_undeterminized.sh
+@@ -70,7 +70,7 @@ if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+   echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+ fi
+ 
+-oldlmcommand="fstproject --project_output=true $oldlm |"
++oldlmcommand="fstproject --project_type=output $oldlm |"
+ 
+ mkdir -p $outdir/log
+ nj=`cat $indir/num_jobs` || exit 1;
+diff --git a/egs/wsj/s5/steps/lmrescore_rnnlm_lat.sh b/egs/wsj/s5/steps/lmrescore_rnnlm_lat.sh
+index 633be09f2bf..f7b17f1342c 100755
+--- a/egs/wsj/s5/steps/lmrescore_rnnlm_lat.sh
++++ b/egs/wsj/s5/steps/lmrescore_rnnlm_lat.sh
+@@ -71,7 +71,7 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
+   print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
+   || exit 1;
+ 
+-oldlm_command="fstproject --project_output=true $oldlm |"
++oldlm_command="fstproject --project_type=output $oldlm |"
+ 
+ mkdir -p $outdir/log
+ nj=`cat $indir/num_jobs` || exit 1;
+diff --git a/egs/wsj/s5/steps/pytorchnn/lmrescore_lattice_pytorchnn.sh b/egs/wsj/s5/steps/pytorchnn/lmrescore_lattice_pytorchnn.sh
+index 2e6f5538e86..ccf4fc72cd0 100755
+--- a/egs/wsj/s5/steps/pytorchnn/lmrescore_lattice_pytorchnn.sh
++++ b/egs/wsj/s5/steps/pytorchnn/lmrescore_lattice_pytorchnn.sh
+@@ -124,7 +124,7 @@ fi
+ 
+ # Rescore the expanded lattice: add neural LM scores first and then remove the
+ # old N-gram LM scores. The two models are effectively interpolated.
+-oldlm_command="fstproject --project_output=true $oldlm |"
++oldlm_command="fstproject --project_type=output $oldlm |"
+ oldlm_weight=$(perl -e "print -1.0 * $weight;")
+ nnlm_weight=$(perl -e "print $weight;")
+ if [ $stage -le 4 ]; then
+diff --git a/egs/wsj/s5/steps/pytorchnn/lmrescore_nbest_pytorchnn.sh b/egs/wsj/s5/steps/pytorchnn/lmrescore_nbest_pytorchnn.sh
+index f8f2252537c..842f5c868ff 100755
+--- a/egs/wsj/s5/steps/pytorchnn/lmrescore_nbest_pytorchnn.sh
++++ b/egs/wsj/s5/steps/pytorchnn/lmrescore_nbest_pytorchnn.sh
+@@ -128,7 +128,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
+       # original lattice.
+       $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
+         lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
+-        lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
++        lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
+         lattice-1best ark:- ark:- \| \
+         lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
+         || exit 1;
+diff --git a/egs/wsj/s5/steps/rnnlmrescore.sh b/egs/wsj/s5/steps/rnnlmrescore.sh
+index de6114038b8..8d84d407f7a 100755
+--- a/egs/wsj/s5/steps/rnnlmrescore.sh
++++ b/egs/wsj/s5/steps/rnnlmrescore.sh
+@@ -127,7 +127,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
+       # original lattice.
+       $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
+         lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
+-        lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
++        lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
+         lattice-1best ark:- ark:- \| \
+         lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
+         || exit 1;
+diff --git a/egs/wsj/s5/steps/tfrnnlm/lmrescore_rnnlm_lat.sh b/egs/wsj/s5/steps/tfrnnlm/lmrescore_rnnlm_lat.sh
+index 437549f339f..21372b3cb89 100644
+--- a/egs/wsj/s5/steps/tfrnnlm/lmrescore_rnnlm_lat.sh
++++ b/egs/wsj/s5/steps/tfrnnlm/lmrescore_rnnlm_lat.sh
+@@ -65,7 +65,7 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
+   print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
+   || exit 1;
+ 
+-oldlm_command="fstproject --project_output=true $oldlm |"
++oldlm_command="fstproject --project_type=output $oldlm |"
+ 
+ mkdir -p $outdir/log
+ nj=`cat $indir/num_jobs` || exit 1;
+diff --git a/egs/wsj/s5/utils/lang/make_unk_lm.sh b/egs/wsj/s5/utils/lang/make_unk_lm.sh
+index f3a41e1af4e..1160214faec 100755
+--- a/egs/wsj/s5/utils/lang/make_unk_lm.sh
++++ b/egs/wsj/s5/utils/lang/make_unk_lm.sh
+@@ -304,7 +304,7 @@ fstcompile $sym_opts <$dir/unk_fst_orig.txt >$dir/unk_orig.fst
+ # a lot of final-states that have no transitions out of them.
+ fstproject $dir/unk_orig.fst | \
+   fstcompose - $dir/constraint.fst | \
+-  fstproject --project_output=true | \
++  fstproject --project_type=output | \
+   fstpushspecial | \
+   fstminimizeencoded | \
+   fstrmsymbols --remove-from-output=true <(echo $phone_disambig_int) >$dir/unk.fst

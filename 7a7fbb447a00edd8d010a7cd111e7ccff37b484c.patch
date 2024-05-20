@@ -1,0 +1,49 @@
+From 7a7fbb447a00edd8d010a7cd111e7ccff37b484c Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sat, 4 Nov 2023 17:07:35 +0100
+Subject: [PATCH] Even less python2.7
+
+---
+ tools/extras/check_dependencies.sh | 29 -----------------------------
+ 1 file changed, 29 deletions(-)
+
+diff --git a/tools/extras/check_dependencies.sh b/tools/extras/check_dependencies.sh
+index 2591c4b6bae..0b91d79be00 100755
+--- a/tools/extras/check_dependencies.sh
++++ b/tools/extras/check_dependencies.sh
+@@ -93,35 +93,6 @@ if ! have python3; then
+   pythonok=false
+ fi
+ 
+-(
+-#Use a subshell so that sourcing env.sh does not have an influence on the rest of the script
+-[ -f ./env.sh ] && . ./env.sh
+-if $pythonok && ! have python2; then
+-  mkdir -p $PWD/python
+-  echo "$0: python2.7 is installed, but the python2 binary does not exist." \
+-       "Creating a symlink and adding this to tools/env.sh"
+-  ln -s $(command -v python2.7) $PWD/python/python2
+-  echo "export PATH=$PWD/python:\${PATH}" >> env.sh
+-fi
+-
+-if [[ -f $PWD/python/.use_default_python && -f $PWD/python/python ]]; then
+-  rm $PWD/python/python
+-fi
+-
+-if $pythonok && have python && [[ ! -f $PWD/python/.use_default_python ]]; then
+-  version=$(python 2>&1 --version | awk '{print $2}')
+-  if [[ $version != "2.7"* ]] ; then
+-    echo "$0: WARNING python 2.7 is not the default python. We fixed this by" \
+-         "adding a correct symlink more prominently on the path."
+-    echo " ... If you really want to use python $version as default, add an" \
+-         "empty file $PWD/python/.use_default_python and run this script again."
+-    mkdir -p $PWD/python
+-    ln -s $(command -v python2.7) $PWD/python/python
+-    echo "export PATH=$PWD/python:\${PATH}" >> env.sh
+-  fi
+-fi
+-)
+-
+ mathlib_missing=false
+ case $(uname -m) in
+   x86_64)  # Suggest MKL on an Intel64 system (not supported on i?86 hosts).

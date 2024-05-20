@@ -1,0 +1,619 @@
+From 93ef0019b847272a239fbb485ef97f29feb1d587 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sat, 19 Nov 2022 00:53:44 +0100
+Subject: [PATCH] On-the-fly configuration of the features for GPU decoder
+
+---
+ ...hed-threaded-nnet3-cuda-online-pipeline.cc | 16 ++---
+ ...ched-threaded-nnet3-cuda-online-pipeline.h |  8 ++-
+ .../batched-threaded-nnet3-cuda-pipeline2.cc  |  6 +-
+ .../batched-threaded-nnet3-cuda-pipeline2.h   |  1 +
+ .../batched-wav-nnet3-cuda-online.cc          |  3 +-
+ src/cudadecoderbin/batched-wav-nnet3-cuda2.cc |  6 +-
+ src/cudadecoderbin/cuda-bin-tools.h           |  2 +
+ .../feature-online-batched-ivector-cuda.cc    | 72 ++++++-------------
+ .../feature-online-batched-ivector-cuda.h     |  6 +-
+ .../online-batched-feature-pipeline-cuda.cc   | 11 +--
+ .../online-batched-feature-pipeline-cuda.h    |  5 +-
+ src/cudafeat/online-cuda-feature-pipeline.cc  | 15 +---
+ src/cudafeat/online-cuda-feature-pipeline.h   |  4 +-
+ src/cudafeat/online-ivector-feature-cuda.cc   | 60 +++++-----------
+ src/cudafeat/online-ivector-feature-cuda.h    | 15 ++--
+ src/ivector/ivector-extractor.h               |  2 +
+ 16 files changed, 85 insertions(+), 147 deletions(-)
+
+diff --git a/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.cc b/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.cc
+index 6e78d7212fd..0b75e85870e 100644
+--- a/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.cc
++++ b/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.cc
+@@ -109,7 +109,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
+   // Feature extraction
+   if (config_.use_gpu_feature_extraction) {
+     gpu_feature_pipeline_.reset(new OnlineBatchedFeaturePipelineCuda(
+-        config_.feature_opts, samples_per_chunk_, config_.max_batch_size,
++        feature_info_, samples_per_chunk_, config_.max_batch_size,
+         num_channels_));
+   } else {
+     feature_pipelines_.resize(num_channels_);
+@@ -124,7 +124,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
+         thread_pool_.get(), config_.num_decoder_copy_threads);
+   }
+ 
+-  decoder_frame_shift_seconds_ = feature_info_->FrameShiftInSeconds() *
++  decoder_frame_shift_seconds_ = feature_info_.FrameShiftInSeconds() *
+                                  config_.compute_opts.frame_subsampling_factor;
+   cuda_decoder_->SetOutputFrameShiftInSeconds(decoder_frame_shift_seconds_);
+ 
+@@ -230,7 +230,7 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
+   if (!config_.use_gpu_feature_extraction) {
+     KALDI_ASSERT(!feature_pipelines_[ichannel]);
+     feature_pipelines_[ichannel].reset(
+-        new OnlineNnet2FeaturePipeline(*feature_info_));
++        new OnlineNnet2FeaturePipeline(feature_info_));
+   }
+ 
+   channels_info_[ichannel].Reset();
+@@ -693,16 +693,12 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunDecoder(
+ }
+ 
+ void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {
+-  feature_info_.reset(new OnlineNnet2FeaturePipelineInfo(config_.feature_opts));
+-  feature_info_->ivector_extractor_info.use_most_recent_ivector = true;
+-  feature_info_->ivector_extractor_info.greedy_ivector_extractor = true;
+-
+-  OnlineNnet2FeaturePipeline feature(*feature_info_);
++  OnlineNnet2FeaturePipeline feature(feature_info_);
+   use_ivectors_ = (feature.IvectorFeature() != NULL);
+   input_dim_ = feature.InputFeature()->Dim();
+   if (use_ivectors_) ivector_dim_ = feature.IvectorFeature()->Dim();
+-  model_frequency_ = feature_info_->GetSamplingFrequency();
+-  BaseFloat frame_shift_seconds = feature_info_->FrameShiftInSeconds();
++  model_frequency_ = feature_info_.GetSamplingFrequency();
++  BaseFloat frame_shift_seconds = feature_info_.FrameShiftInSeconds();
+   input_frames_per_chunk_ = config_.compute_opts.frames_per_chunk;
+   seconds_per_chunk_ = input_frames_per_chunk_ * frame_shift_seconds;
+   int32 samp_per_frame =
+diff --git a/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h b/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h
+index 6608aa79dd8..fb89a5f6087 100644
+--- a/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h
++++ b/src/cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h
+@@ -89,7 +89,6 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
+         "reset-on-endpoint", &reset_on_endpoint,
+         "Reset a decoder channel when endpoint detected. Do not close stream");
+ 
+-    feature_opts.Register(po);
+     decoder_opts.Register(po);
+     det_opts.Register(po);
+     compute_opts.Register(po);
+@@ -102,7 +101,6 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
+   bool use_gpu_feature_extraction;
+   bool reset_on_endpoint;
+ 
+-  OnlineNnet2FeaturePipelineConfig feature_opts;
+   CudaDecoderConfig decoder_opts;
+   fst::DeterminizeLatticePhonePrunedOptions det_opts;
+   nnet3::NnetSimpleComputationOptions compute_opts;
+@@ -132,12 +130,14 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
+ 
+   BatchedThreadedNnet3CudaOnlinePipeline(
+       const BatchedThreadedNnet3CudaOnlinePipelineConfig &config,
++      OnlineNnet2FeaturePipelineInfo &feature_info,
+       const fst::Fst<fst::StdArc> &decode_fst,
+       const nnet3::AmNnetSimple &am_nnet, const TransitionModel &trans_model)
+       : config_(config),
+         max_batch_size_(config.max_batch_size),
+ 	num_channels_(std::max(max_batch_size_ * KALDI_CUDA_DECODER_MIN_NCHANNELS_FACTOR, config_.num_channels)),
+         channels_info_(num_channels_),
++        feature_info_(feature_info),
+         trans_model_(&trans_model),
+         am_nnet_(&am_nnet),
+         available_channels_(num_channels_),
+@@ -388,10 +388,12 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
+   int32 num_channels_;
+ 
+   std::vector<ChannelInfo> channels_info_;
++
++  // Features
++  OnlineNnet2FeaturePipelineInfo &feature_info_;
+   // Models
+   const TransitionModel *trans_model_;
+   const nnet3::AmNnetSimple *am_nnet_;
+-  std::unique_ptr<OnlineNnet2FeaturePipelineInfo> feature_info_;
+ 
+   // Decoder channels currently available, w/ mutex
+   std::vector<int32> available_channels_;
+diff --git a/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.cc b/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.cc
+index c076910672a..78966e181e9 100644
+--- a/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.cc
++++ b/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.cc
+@@ -33,10 +33,11 @@ const float kSleepForNewTask = 100e-6;
+ 
+ BatchedThreadedNnet3CudaPipeline2::BatchedThreadedNnet3CudaPipeline2(
+     const BatchedThreadedNnet3CudaPipeline2Config &config,
++    OnlineNnet2FeaturePipelineInfo &feature_info,
+     const fst::Fst<fst::StdArc> &decode_fst, const nnet3::AmNnetSimple &am_nnet,
+     const TransitionModel &trans_model)
+     : config_(config),
+-      cuda_online_pipeline_(config.cuda_online_pipeline_opts, decode_fst,
++      cuda_online_pipeline_(config.cuda_online_pipeline_opts, feature_info, decode_fst,
+                             am_nnet, trans_model),
+       use_online_features_(config_.use_online_features),
+       corr_id_cnt_(0),
+@@ -61,8 +62,7 @@ BatchedThreadedNnet3CudaPipeline2::BatchedThreadedNnet3CudaPipeline2(
+     n_input_per_chunk_ = cuda_online_pipeline_.GetNSampsPerChunk();
+   } else {
+     n_input_per_chunk_ = cuda_online_pipeline_.GetNInputFramesPerChunk();
+-    cuda_features_.reset(new OnlineCudaFeaturePipeline(
+-        config_.cuda_online_pipeline_opts.feature_opts));
++    cuda_features_.reset(new OnlineCudaFeaturePipeline(feature_info));
+     wave_buffer_.reset(new HostDeviceVector());
+     next_wave_buffer_.reset(new HostDeviceVector());
+   }
+diff --git a/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h b/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h
+index d08c5782cee..c4548849761 100644
+--- a/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h
++++ b/src/cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h
+@@ -152,6 +152,7 @@ class BatchedThreadedNnet3CudaPipeline2 {
+  public:
+   BatchedThreadedNnet3CudaPipeline2(
+       const BatchedThreadedNnet3CudaPipeline2Config &config,
++      OnlineNnet2FeaturePipelineInfo &info,
+       const fst::Fst<fst::StdArc> &decode_fst,
+       const nnet3::AmNnetSimple &am_nnet, const TransitionModel &trans_model);
+ 
+diff --git a/src/cudadecoderbin/batched-wav-nnet3-cuda-online.cc b/src/cudadecoderbin/batched-wav-nnet3-cuda-online.cc
+index 1aba7144af1..70908cbea0c 100644
+--- a/src/cudadecoderbin/batched-wav-nnet3-cuda-online.cc
++++ b/src/cudadecoderbin/batched-wav-nnet3-cuda-online.cc
+@@ -79,8 +79,9 @@ int main(int argc, char *argv[]) {
+     fst::Fst<fst::StdArc> *decode_fst;
+     fst::SymbolTable *word_syms;
+     ReadModels(opts, &trans_model, &am_nnet, &decode_fst, &word_syms);
++    OnlineNnet2FeaturePipelineInfo feature_info(opts.feature_config);
+     BatchedThreadedNnet3CudaOnlinePipeline cuda_pipeline(
+-        opts.batched_decoder_config, *decode_fst, am_nnet, trans_model);
++        opts.batched_decoder_config, feature_info, *decode_fst, am_nnet, trans_model);
+     delete decode_fst;
+     if (word_syms) cuda_pipeline.SetSymbolTable(*word_syms);
+ 
+diff --git a/src/cudadecoderbin/batched-wav-nnet3-cuda2.cc b/src/cudadecoderbin/batched-wav-nnet3-cuda2.cc
+index 992b34598d2..e6513f9fc7f 100644
+--- a/src/cudadecoderbin/batched-wav-nnet3-cuda2.cc
++++ b/src/cudadecoderbin/batched-wav-nnet3-cuda2.cc
+@@ -93,9 +93,11 @@ int main(int argc, char *argv[]) {
+ 
+     // Multi-threaded CPU and batched GPU decoder
+     BatchedThreadedNnet3CudaPipeline2Config batched_decoder_config;
++    OnlineNnet2FeaturePipelineConfig feature_config;
+     CuDevice::RegisterDeviceOptions(&po);
+     RegisterCuAllocatorOptions(&po);
+     batched_decoder_config.Register(&po);
++    feature_config.Register(&po);
+ 
+     po.Read(argc, argv);
+ 
+@@ -113,6 +115,8 @@ int main(int argc, char *argv[]) {
+     std::shared_ptr<TransitionModel> trans_model(new TransitionModel());
+ 
+     nnet3::AmNnetSimple am_nnet;
++    // Read feature info
++    OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
+ 
+     // read transition model and nnet
+     bool binary;
+@@ -137,7 +141,7 @@ int main(int argc, char *argv[]) {
+           KALDI_CUDA_DECODER_BIN_MAX_SEGMENT_LENGTH_S;
+     }
+     BatchedThreadedNnet3CudaPipeline2 cuda_pipeline(
+-        batched_decoder_config, *decode_fst, am_nnet, *trans_model);
++        batched_decoder_config, feature_info, *decode_fst, am_nnet, *trans_model);
+ 
+     delete decode_fst;
+ 
+diff --git a/src/cudadecoderbin/cuda-bin-tools.h b/src/cudadecoderbin/cuda-bin-tools.h
+index 0cf21a9f5f4..31fd3716f3e 100644
+--- a/src/cudadecoderbin/cuda-bin-tools.h
++++ b/src/cudadecoderbin/cuda-bin-tools.h
+@@ -67,6 +67,7 @@ struct CudaOnlineBinaryOptions {
+       wav_rspecifier, clat_wspecifier;
+   std::string lattice_postprocessor_config_rxfilename;
+   BatchedThreadedNnet3CudaOnlinePipelineConfig batched_decoder_config;
++  OnlineNnet2FeaturePipelineConfig feature_config;
+ };
+ 
+ inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
+@@ -107,6 +108,7 @@ inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
+   CuDevice::RegisterDeviceOptions(&po);
+   RegisterCuAllocatorOptions(&po);
+   opts.batched_decoder_config.Register(&po);
++  opts.feature_config.Register(&po);
+ 
+   po.Read(argc, argv);
+ 
+diff --git a/src/cudafeat/feature-online-batched-ivector-cuda.cc b/src/cudafeat/feature-online-batched-ivector-cuda.cc
+index 538e268dd98..c80f43b3563 100644
+--- a/src/cudafeat/feature-online-batched-ivector-cuda.cc
++++ b/src/cudafeat/feature-online-batched-ivector-cuda.cc
+@@ -20,10 +20,11 @@
+ 
+ namespace kaldi {
+ BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
+-    const OnlineIvectorExtractionConfig &config,
++    const OnlineIvectorExtractionInfo &info,
+     int32_t feat_dim, int32_t chunk_size,
+     int32_t num_lanes, int32_t num_channels)
+-    : cmvn_(NULL),
++    : info_(info),
++      cmvn_(NULL),
+       feat_dim_(feat_dim),
+       chunk_size_(chunk_size),
+       max_lanes_(num_lanes),
+@@ -33,8 +34,7 @@ BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
+   // upgrade to a more recent CUDA version.
+   KALDI_ERR << "BatchedIvectorExtractorCuda requires CUDA 9.1 or newer.";
+ #endif
+-  info_.Init(config);
+-  Read(config);
++  Read();
+ 
+   naive_cmvn_state_ = OnlineCmvnState(info_.global_cmvn_stats);
+   // TODO parameterize coarsening factor?
+@@ -100,63 +100,35 @@ BatchedIvectorExtractorCuda::~BatchedIvectorExtractorCuda() {
+   CuDevice::Instantiate().Free(ivec_array_);
+ }
+ 
+-void BatchedIvectorExtractorCuda::Read(
+-    const kaldi::OnlineIvectorExtractionConfig &config) {
+-  // read ubm
+-  DiagGmm gmm;
+-  ReadKaldiObject(config.diag_ubm_rxfilename, &gmm);
+-  ubm_gconsts_.Resize(gmm.NumGauss());
+-  ubm_gconsts_.CopyFromVec(gmm.gconsts());
+-  ubm_means_inv_vars_.Resize(gmm.NumGauss(), gmm.Dim());
+-  ubm_means_inv_vars_.CopyFromMat(gmm.means_invvars());
+-  ubm_inv_vars_.Resize(gmm.NumGauss(), gmm.Dim());
+-  ubm_inv_vars_.CopyFromMat(gmm.inv_vars());
+-  num_gauss_ = gmm.NumGauss();
+-
+-  // read extractor (copied from ivector/ivector-extractor.cc)
+-  bool binary;
+-  Input input(config.ivector_extractor_rxfilename, &binary);
+-  Matrix<float> w;
+-  Vector<float> w_vec;
+-  std::vector<Matrix<float> > ie_M;
+-  std::vector<SpMatrix<float> > ie_Sigma_inv;
+-
+-  ExpectToken(input.Stream(), binary, "<IvectorExtractor>");
+-  ExpectToken(input.Stream(), binary, "<w>");
+-  w.Read(input.Stream(), binary);
+-  ExpectToken(input.Stream(), binary, "<w_vec>");
+-  w_vec.Read(input.Stream(), binary);
+-  ExpectToken(input.Stream(), binary, "<M>");
+-  int32 size;
+-  ReadBasicType(input.Stream(), binary, &size);
+-  KALDI_ASSERT(size > 0);
+-  ie_M.resize(size);
+-  for (int32 i = 0; i < size; i++) {
+-    ie_M[i].Read(input.Stream(), binary);
+-  }
+-  ExpectToken(input.Stream(), binary, "<SigmaInv>");
+-  ie_Sigma_inv.resize(size);
+-  for (int32 i = 0; i < size; i++) {
+-    ie_Sigma_inv[i].Read(input.Stream(), binary);
+-  }
+-  ExpectToken(input.Stream(), binary, "<IvectorOffset>");
+-  ReadBasicType(input.Stream(), binary, &prior_offset_);
+-  ExpectToken(input.Stream(), binary, "</IvectorExtractor>");
++void BatchedIvectorExtractorCuda::Read() {
++
++  // Pick gmm values
++  ubm_gconsts_.Resize(info_.diag_ubm.NumGauss());
++  ubm_gconsts_.CopyFromVec(info_.diag_ubm.gconsts());
++  ubm_means_inv_vars_.Resize(info_.diag_ubm.NumGauss(), info_.diag_ubm.Dim());
++  ubm_means_inv_vars_.CopyFromMat(info_.diag_ubm.means_invvars());
++  ubm_inv_vars_.Resize(info_.diag_ubm.NumGauss(), info_.diag_ubm.Dim());
++  ubm_inv_vars_.CopyFromMat(info_.diag_ubm.inv_vars());
++  num_gauss_ = info_.diag_ubm.NumGauss();
++
++  // Pick and recompute values
++  const std::vector<Matrix<double> > &ie_M = info_.extractor.M_;
++  const std::vector<SpMatrix<double> > &ie_Sigma_inv = info_.extractor.Sigma_inv_;
++  prior_offset_ = info_.extractor.prior_offset_;
+ 
+   // compute derived variables
+   ivector_dim_ = ie_M[0].NumCols();
+   lda_dim_ = ie_M[0].NumRows();
+ 
+   ie_Sigma_inv_M_f_.Resize(num_gauss_ * lda_dim_, ivector_dim_, kUndefined);
+-
+   ie_U_.Resize(num_gauss_, ivector_dim_ * (ivector_dim_ + 1) / 2);
+ 
+-  SpMatrix<float> tmp_sub_U(ivector_dim_);
+-  Matrix<float> tmp_Sigma_inv_M(lda_dim_, ivector_dim_);
++  SpMatrix<double> tmp_sub_U(ivector_dim_);
++  Matrix<double> tmp_Sigma_inv_M(lda_dim_, ivector_dim_);
+   for (int32 i = 0; i < num_gauss_; i++) {
+     // compute matrix ie_Sigma_inv_M[i]
+     tmp_sub_U.AddMat2Sp(1, ie_M[i], kTrans, ie_Sigma_inv[i], 0);
+-    SubVector<float> tmp_U_vec(tmp_sub_U.Data(),
++    SubVector<double> tmp_U_vec(tmp_sub_U.Data(),
+                                ivector_dim_ * (ivector_dim_ + 1) / 2);
+     ie_U_.Row(i).CopyFromVec(tmp_U_vec);
+ 
+diff --git a/src/cudafeat/feature-online-batched-ivector-cuda.h b/src/cudafeat/feature-online-batched-ivector-cuda.h
+index edb8bfe9206..48310184fb7 100644
+--- a/src/cudafeat/feature-online-batched-ivector-cuda.h
++++ b/src/cudafeat/feature-online-batched-ivector-cuda.h
+@@ -29,7 +29,7 @@ namespace kaldi {
+ 
+ class BatchedIvectorExtractorCuda {
+  public:
+-  BatchedIvectorExtractorCuda(const OnlineIvectorExtractionConfig &config,
++  BatchedIvectorExtractorCuda(const OnlineIvectorExtractionInfo &info,
+                               int32_t feat_dim,
+                               int32_t chunk_size, int32_t num_lanes,
+                               int32_t num_channels);
+@@ -64,12 +64,12 @@ class BatchedIvectorExtractorCuda {
+   int32 NumGauss() const { return num_gauss_; }
+ 
+  private:
+-  OnlineIvectorExtractionInfo info_;
++  const OnlineIvectorExtractionInfo &info_;
+ 
+   BatchedIvectorExtractorCuda(BatchedIvectorExtractorCuda const &);
+   BatchedIvectorExtractorCuda &operator=(BatchedIvectorExtractorCuda const &);
+ 
+-  void Read(const kaldi::OnlineIvectorExtractionConfig &config);
++  void Read();
+ 
+   void InitializeChannels(const LaneDesc *lanes, int32_t num_lanes);
+ 
+diff --git a/src/cudafeat/online-batched-feature-pipeline-cuda.cc b/src/cudafeat/online-batched-feature-pipeline-cuda.cc
+index 981345404f5..06819f34f43 100644
+--- a/src/cudafeat/online-batched-feature-pipeline-cuda.cc
++++ b/src/cudafeat/online-batched-feature-pipeline-cuda.cc
+@@ -25,9 +25,9 @@
+ namespace kaldi {
+ 
+ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
+-    const OnlineNnet2FeaturePipelineConfig &config,
++    const OnlineNnet2FeaturePipelineInfo &info,
+     int32_t max_chunk_size_samples, int32_t max_lanes, int32_t num_channels)
+-    : info_(config),
++    : info_(info),
+       cmvn_(NULL),
+       max_chunk_size_samples_(max_chunk_size_samples),
+       max_lanes_(max_lanes),
+@@ -81,12 +81,7 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
+   }
+ 
+   if (info_.use_ivectors) {
+-    OnlineIvectorExtractionConfig ivector_extraction_opts;
+-    ReadConfigFromFile(config.ivector_extraction_config,
+-                       &ivector_extraction_opts);
+-    info_.ivector_extractor_info.Init(ivector_extraction_opts);
+-
+-    ivector_ = new BatchedIvectorExtractorCuda(ivector_extraction_opts,
++    ivector_ = new BatchedIvectorExtractorCuda(info_.ivector_extractor_info,
+                                                FeatureDim(),
+                                                max_chunk_size_frames_,
+                                                max_lanes_, num_channels_);
+diff --git a/src/cudafeat/online-batched-feature-pipeline-cuda.h b/src/cudafeat/online-batched-feature-pipeline-cuda.h
+index fa000f03b62..57971bedb8f 100644
+--- a/src/cudafeat/online-batched-feature-pipeline-cuda.h
++++ b/src/cudafeat/online-batched-feature-pipeline-cuda.h
+@@ -39,8 +39,9 @@ namespace kaldi {
+ 
+ class OnlineBatchedFeaturePipelineCuda {
+  public:
++
+   explicit OnlineBatchedFeaturePipelineCuda(
+-      const OnlineNnet2FeaturePipelineConfig &config, int32_t max_chunk_size,
++      const OnlineNnet2FeaturePipelineInfo &feature_info, int32_t max_chunk_size,
+       int32_t max_lanes, int32_t num_channels);
+ 
+   // Computes features and ivectors for a batched chunk of audio data.
+@@ -107,7 +108,7 @@ class OnlineBatchedFeaturePipelineCuda {
+   const FrameExtractionOptions &GetFrameOptions() { return frame_opts_; }
+ 
+  private:
+-  OnlineNnet2FeaturePipelineInfo info_;
++  const OnlineNnet2FeaturePipelineInfo &info_;
+ 
+   CudaOnlineBatchedSpectralFeatures *spectral_feat_;
+   CudaOnlineBatchedCmvn *cmvn_;
+diff --git a/src/cudafeat/online-cuda-feature-pipeline.cc b/src/cudafeat/online-cuda-feature-pipeline.cc
+index 58563bba99f..8da8ff75614 100644
+--- a/src/cudafeat/online-cuda-feature-pipeline.cc
++++ b/src/cudafeat/online-cuda-feature-pipeline.cc
+@@ -22,8 +22,8 @@
+ namespace kaldi {
+ 
+ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
+-    const OnlineNnet2FeaturePipelineConfig &config)
+-    : info_(config), spectral_feat(NULL), ivector(NULL) {
++    const OnlineNnet2FeaturePipelineInfo &info)
++    : info_(info), spectral_feat(NULL), ivector(NULL) {
+   spectral_feat = NULL;
+   cmvn = NULL;
+   ivector = NULL;
+@@ -44,16 +44,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
+   }
+ 
+   if (info_.use_ivectors) {
+-    OnlineIvectorExtractionConfig ivector_extraction_opts;
+-    ReadConfigFromFile(config.ivector_extraction_config,
+-                       &ivector_extraction_opts);
+-    info_.ivector_extractor_info.Init(ivector_extraction_opts);
+-
+-    // Only these ivector options are currently supported
+-    ivector_extraction_opts.use_most_recent_ivector = true;
+-    ivector_extraction_opts.greedy_ivector_extractor = true;
+-
+-    ivector = new IvectorExtractorFastCuda(ivector_extraction_opts);
++    ivector = new IvectorExtractorFastCuda(info_.ivector_extractor_info);
+   }
+ }
+ 
+diff --git a/src/cudafeat/online-cuda-feature-pipeline.h b/src/cudafeat/online-cuda-feature-pipeline.h
+index f3d2795e3fb..2f9ac4cc688 100644
+--- a/src/cudafeat/online-cuda-feature-pipeline.h
++++ b/src/cudafeat/online-cuda-feature-pipeline.h
+@@ -36,7 +36,7 @@ namespace kaldi {
+ class OnlineCudaFeaturePipeline {
+  public:
+   explicit OnlineCudaFeaturePipeline(
+-      const OnlineNnet2FeaturePipelineConfig &config);
++      const OnlineNnet2FeaturePipelineInfo &info);
+ 
+   void ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
+                        BaseFloat sample_freq,
+@@ -46,7 +46,7 @@ class OnlineCudaFeaturePipeline {
+   ~OnlineCudaFeaturePipeline();
+ 
+  private:
+-  OnlineNnet2FeaturePipelineInfo info_;
++  const OnlineNnet2FeaturePipelineInfo &info_;
+   CudaSpectralFeatures *spectral_feat;
+   CudaOnlineCmvn *cmvn;
+   IvectorExtractorFastCuda *ivector;
+diff --git a/src/cudafeat/online-ivector-feature-cuda.cc b/src/cudafeat/online-ivector-feature-cuda.cc
+index bd4964860e0..287d0ab470e 100644
+--- a/src/cudafeat/online-ivector-feature-cuda.cc
++++ b/src/cudafeat/online-ivector-feature-cuda.cc
+@@ -120,48 +120,20 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
+   nvtxRangePop();
+ }
+ 
+-void IvectorExtractorFastCuda::Read(
+-    const kaldi::OnlineIvectorExtractionConfig &config) {
++void IvectorExtractorFastCuda::Read() {
+   // read ubm
+-  DiagGmm gmm;
+-  ReadKaldiObject(config.diag_ubm_rxfilename, &gmm);
+-  ubm_gconsts_.Resize(gmm.NumGauss());
+-  ubm_gconsts_.CopyFromVec(gmm.gconsts());
+-  ubm_means_inv_vars_.Resize(gmm.NumGauss(), gmm.Dim());
+-  ubm_means_inv_vars_.CopyFromMat(gmm.means_invvars());
+-  ubm_inv_vars_.Resize(gmm.NumGauss(), gmm.Dim());
+-  ubm_inv_vars_.CopyFromMat(gmm.inv_vars());
+-  num_gauss_ = gmm.NumGauss();
+-
+-  // read extractor (copied from ivector/ivector-extractor.cc)
+-  bool binary;
+-  Input input(config.ivector_extractor_rxfilename, &binary);
+-  Matrix<float> w;
+-  Vector<float> w_vec;
+-  std::vector<Matrix<float> > ie_M;
+-  std::vector<SpMatrix<float> > ie_Sigma_inv;
+-
+-  ExpectToken(input.Stream(), binary, "<IvectorExtractor>");
+-  ExpectToken(input.Stream(), binary, "<w>");
+-  w.Read(input.Stream(), binary);
+-  ExpectToken(input.Stream(), binary, "<w_vec>");
+-  w_vec.Read(input.Stream(), binary);
+-  ExpectToken(input.Stream(), binary, "<M>");
+-  int32 size;
+-  ReadBasicType(input.Stream(), binary, &size);
+-  KALDI_ASSERT(size > 0);
+-  ie_M.resize(size);
+-  for (int32 i = 0; i < size; i++) {
+-    ie_M[i].Read(input.Stream(), binary);
+-  }
+-  ExpectToken(input.Stream(), binary, "<SigmaInv>");
+-  ie_Sigma_inv.resize(size);
+-  for (int32 i = 0; i < size; i++) {
+-    ie_Sigma_inv[i].Read(input.Stream(), binary);
+-  }
+-  ExpectToken(input.Stream(), binary, "<IvectorOffset>");
+-  ReadBasicType(input.Stream(), binary, &prior_offset_);
+-  ExpectToken(input.Stream(), binary, "</IvectorExtractor>");
++  ubm_gconsts_.Resize(info_.diag_ubm.NumGauss());
++  ubm_gconsts_.CopyFromVec(info_.diag_ubm.gconsts());
++  ubm_means_inv_vars_.Resize(info_.diag_ubm.NumGauss(), info_.diag_ubm.Dim());
++  ubm_means_inv_vars_.CopyFromMat(info_.diag_ubm.means_invvars());
++  ubm_inv_vars_.Resize(info_.diag_ubm.NumGauss(), info_.diag_ubm.Dim());
++  ubm_inv_vars_.CopyFromMat(info_.diag_ubm.inv_vars());
++  num_gauss_ = info_.diag_ubm.NumGauss();
++
++  // Pick and recompute values
++  const std::vector<Matrix<double> > &ie_M = info_.extractor.M_;
++  const std::vector<SpMatrix<double> > &ie_Sigma_inv = info_.extractor.Sigma_inv_;
++  prior_offset_ = info_.extractor.prior_offset_;
+ 
+   // compute derived variables
+   ivector_dim_ = ie_M[0].NumCols();
+@@ -171,12 +143,12 @@ void IvectorExtractorFastCuda::Read(
+ 
+   ie_U_.Resize(num_gauss_, ivector_dim_ * (ivector_dim_ + 1) / 2);
+ 
+-  SpMatrix<float> tmp_sub_U(ivector_dim_);
+-  Matrix<float> tmp_Sigma_inv_M(feat_dim_, ivector_dim_);
++  SpMatrix<double> tmp_sub_U(ivector_dim_);
++  Matrix<double> tmp_Sigma_inv_M(feat_dim_, ivector_dim_);
+   for (int32 i = 0; i < num_gauss_; i++) {
+     // compute matrix ie_Sigma_inv_M[i[
+     tmp_sub_U.AddMat2Sp(1, ie_M[i], kTrans, ie_Sigma_inv[i], 0);
+-    SubVector<float> tmp_U_vec(tmp_sub_U.Data(),
++    SubVector<double> tmp_U_vec(tmp_sub_U.Data(),
+                                ivector_dim_ * (ivector_dim_ + 1) / 2);
+     ie_U_.Row(i).CopyFromVec(tmp_U_vec);
+ 
+diff --git a/src/cudafeat/online-ivector-feature-cuda.h b/src/cudafeat/online-ivector-feature-cuda.h
+index f6fe1e65cb9..62fc95d3110 100644
+--- a/src/cudafeat/online-ivector-feature-cuda.h
++++ b/src/cudafeat/online-ivector-feature-cuda.h
+@@ -29,20 +29,19 @@ namespace kaldi {
+ 
+ class IvectorExtractorFastCuda {
+  public:
+-  IvectorExtractorFastCuda(const OnlineIvectorExtractionConfig &config)
+-      : b_(0), tot_post_(2) {
+-    if (config.use_most_recent_ivector == false) {
++  IvectorExtractorFastCuda(const OnlineIvectorExtractionInfo &info)
++      : info_(info), b_(0), tot_post_(2) {
++    if (info_.use_most_recent_ivector == false) {
+       KALDI_WARN
+           << "IvectorExractorFastCuda: Ignoring use_most_recent_ivector=false.";
+     }
+-    if (config.greedy_ivector_extractor == false) {
++    if (info_.greedy_ivector_extractor == false) {
+       KALDI_WARN << "IvectorExractorFastCuda: Ignoring "
+                     "greedy_ivector_extractor=false.";
+     }
+ 
+-    info_.Init(config);
++    Read();
+     naive_cmvn_state_ = OnlineCmvnState(info_.global_cmvn_stats);
+-    Read(config);
+     cu_lda_.Resize(info_.lda_mat.NumRows(), info_.lda_mat.NumCols());
+     cu_lda_.CopyFromMat(info_.lda_mat);
+ 
+@@ -84,12 +83,12 @@ class IvectorExtractorFastCuda {
+   int32 NumGauss() const { return num_gauss_; }
+ 
+  private:
+-  OnlineIvectorExtractionInfo info_;
++  const OnlineIvectorExtractionInfo &info_;
+ 
+   IvectorExtractorFastCuda(IvectorExtractorFastCuda const &);
+   IvectorExtractorFastCuda &operator=(IvectorExtractorFastCuda const &);
+ 
+-  void Read(const kaldi::OnlineIvectorExtractionConfig &config);
++  void Read();
+ 
+   void SpliceFeats(const CuMatrixBase<BaseFloat> &feats,
+                    CuMatrix<BaseFloat> *spliced_feats);
+diff --git a/src/ivector/ivector-extractor.h b/src/ivector/ivector-extractor.h
+index 938034859e2..a1dc0586a31 100644
+--- a/src/ivector/ivector-extractor.h
++++ b/src/ivector/ivector-extractor.h
+@@ -137,6 +137,8 @@ class IvectorExtractor {
+  public:
+   friend class IvectorExtractorStats;
+   friend class OnlineIvectorEstimationStats;
++  friend class BatchedIvectorExtractorCuda;
++  friend class IvectorExtractorFastCuda;
+ 
+   IvectorExtractor(): prior_offset_(0.0) { }
+ 

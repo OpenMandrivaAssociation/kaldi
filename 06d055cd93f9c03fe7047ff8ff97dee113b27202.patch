@@ -1,0 +1,26 @@
+From 06d055cd93f9c03fe7047ff8ff97dee113b27202 Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Sun, 7 Nov 2021 13:34:05 +0100
+Subject: [PATCH] Fix warning, sync to master
+
+---
+ src/fstext/pre-determinize-inl.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/fstext/pre-determinize-inl.h b/src/fstext/pre-determinize-inl.h
+index 9ac32279a15..d51948f1877 100644
+--- a/src/fstext/pre-determinize-inl.h
++++ b/src/fstext/pre-determinize-inl.h
+@@ -235,9 +235,9 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
+   assert(symTable != NULL);
+   const char *prefix_ptr = prefix.c_str();
+   size_t prefix_len = strlen(prefix_ptr);  // allowed to be zero but not encouraged.
+-  for (SymbolTable::iterator siter = symTable->begin(); siter != symTable->end(); ++siter) {
+-    const char *sym = siter->Symbol().c_str();
+-    if (!strncmp(prefix_ptr, sym, prefix_len)) {  // has prefix.
++  for (SymbolTableIterator siter(*symTable); !siter.Done(); siter.Next()) {
++    const std::string &sym = siter.Symbol();
++    if (!strncmp(prefix_ptr, sym.c_str(), prefix_len)) {  // has prefix.
+       if (isdigit(sym[prefix_len])) {  // we don't allow prefix followed by a digit, as a symbol.
+         // Has at least one digit.
+         size_t pos;

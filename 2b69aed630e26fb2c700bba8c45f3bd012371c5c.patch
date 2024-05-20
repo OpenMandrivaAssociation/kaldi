@@ -1,0 +1,34 @@
+From 2b69aed630e26fb2c700bba8c45f3bd012371c5c Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Wed, 20 Dec 2023 00:01:12 +0100
+Subject: [PATCH] FST graph also needs full relabel for Vosk to work with
+ dynamic grammars
+
+---
+ egs/wsj/s5/utils/mkgraph_lookahead.sh | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/egs/wsj/s5/utils/mkgraph_lookahead.sh b/egs/wsj/s5/utils/mkgraph_lookahead.sh
+index 82261b56a49..a89fcfa414d 100755
+--- a/egs/wsj/s5/utils/mkgraph_lookahead.sh
++++ b/egs/wsj/s5/utils/mkgraph_lookahead.sh
+@@ -147,16 +147,16 @@ if [[ -z $arpa ]]; then
+       [ ! -f $lang/oov.int ] && \
+         echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
+       fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $gr | \
+-        fstrelabel --relabel_ipairs=${dir}/relabel | \
++        fstrelabel --relabel_ipairs=${dir}/relabel --relabel_opairs=${dir}/relabel | \
+         fstarcsort --sort_type=ilabel | \
+         fstconvert --fst_type=const > ${dir}/Gr.fst.$$
+     else
+-      fstrelabel --relabel_ipairs=${dir}/relabel "$gr" | \
++      fstrelabel --relabel_ipairs=${dir}/relabel --relabel_opairs=${dir}/relabel "$gr" | \
+         fstarcsort --sort_type=ilabel | \
+         fstconvert --fst_type=const > ${dir}/Gr.fst.$$
+     fi
+     mv $dir/Gr.fst.$$ $dir/Gr.fst
+-    cp $lang/words.txt $dir/ || exit 1;
++    utils/relabel_words.py ${dir}/relabel ${lang}/words.txt > ${dir}/words.txt
+   fi
+ else
+   if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $arpa ]]; then

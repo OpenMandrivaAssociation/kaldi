@@ -1,0 +1,204 @@
+From f2630f6c82d06834990ff812208d52c4e5357ccb Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Tue, 22 Dec 2020 22:40:20 +0100
+Subject: [PATCH] Require c++17 everywhere
+
+---
+ src/makefiles/android_openblas.mk       | 2 +-
+ src/makefiles/cygwin.mk                 | 2 +-
+ src/makefiles/darwin.mk                 | 2 +-
+ src/makefiles/darwin_clapack.mk         | 2 +-
+ src/makefiles/linux_atlas.mk            | 2 +-
+ src/makefiles/linux_atlas_arm.mk        | 2 +-
+ src/makefiles/linux_atlas_ppc64le.mk    | 2 +-
+ src/makefiles/linux_clapack.mk          | 2 +-
+ src/makefiles/linux_clapack_arm.mk      | 2 +-
+ src/makefiles/linux_openblas.mk         | 2 +-
+ src/makefiles/linux_openblas_aarch64.mk | 2 +-
+ src/makefiles/linux_openblas_arm.mk     | 2 +-
+ src/makefiles/linux_openblas_ppc64le.mk | 2 +-
+ src/makefiles/linux_x86_64_mkl.mk       | 2 +-
+ 14 files changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/src/makefiles/android_openblas.mk b/src/makefiles/android_openblas.mk
+index edab38e0270..4310e47f68c 100644
+--- a/src/makefiles/android_openblas.mk
++++ b/src/makefiles/android_openblas.mk
+@@ -25,7 +25,7 @@ $(error Android build does not support compiling with $(CXX).
+         Supported compilers: clang++)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self -Wno-mismatched-tags \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/cygwin.mk b/src/makefiles/cygwin.mk
+index f9e73b90a47..7a77a19453b 100644
+--- a/src/makefiles/cygwin.mk
++++ b/src/makefiles/cygwin.mk
+@@ -10,7 +10,7 @@ ifndef OPENFSTLIBS
+ $(error OPENFSTLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -U__STRICT_ANSI__ -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -U__STRICT_ANSI__ -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/darwin.mk b/src/makefiles/darwin.mk
+index 58eedaec8ae..7da1dda47ba 100644
+--- a/src/makefiles/darwin.mk
++++ b/src/makefiles/darwin.mk
+@@ -10,7 +10,7 @@ ifndef OPENFSTLIBS
+ $(error OPENFSTLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/darwin_clapack.mk b/src/makefiles/darwin_clapack.mk
+index 9974fb4b959..6c262af1e86 100644
+--- a/src/makefiles/darwin_clapack.mk
++++ b/src/makefiles/darwin_clapack.mk
+@@ -17,7 +17,7 @@ CLAPACKLIBS = $(CLAPACKROOT)/CLAPACK-3.2.1/lapack.a $(CLAPACKROOT)/CLAPACK-3.2.1
+ 	      $(CLAPACKROOT)/CBLAS/lib/cblas.a \
+ 	      $(CLAPACKROOT)/f2c_BLAS-3.8.0/blas.a $(CLAPACKROOT)/libf2c/libf2c.a
+ 
+-CXXFLAGS = -std=c++14 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_atlas.mk b/src/makefiles/linux_atlas.mk
+index d1443bee0b1..07264b79e2c 100644
+--- a/src/makefiles/linux_atlas.mk
++++ b/src/makefiles/linux_atlas.mk
+@@ -19,7 +19,7 @@ ifndef ATLASLIBS
+ $(error ATLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_atlas_arm.mk b/src/makefiles/linux_atlas_arm.mk
+index b8fc1ffe7e9..5df8ac22965 100644
+--- a/src/makefiles/linux_atlas_arm.mk
++++ b/src/makefiles/linux_atlas_arm.mk
+@@ -16,7 +16,7 @@ ifndef ATLASLIBS
+ $(error ATLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_atlas_ppc64le.mk b/src/makefiles/linux_atlas_ppc64le.mk
+index 778710b2466..cdd58293ca2 100644
+--- a/src/makefiles/linux_atlas_ppc64le.mk
++++ b/src/makefiles/linux_atlas_ppc64le.mk
+@@ -19,7 +19,7 @@ ifndef ATLASLIBS
+ $(error ATLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_clapack.mk b/src/makefiles/linux_clapack.mk
+index bd6f611fc71..e6f4f541d0b 100644
+--- a/src/makefiles/linux_clapack.mk
++++ b/src/makefiles/linux_clapack.mk
+@@ -17,7 +17,7 @@ CLAPACKLIBS = $(CLAPACKROOT)/CLAPACK-3.2.1/lapack.a $(CLAPACKROOT)/CLAPACK-3.2.1
+ 	      $(CLAPACKROOT)/CBLAS/lib/cblas.a \
+ 	      $(CLAPACKROOT)/f2c_BLAS-3.8.0/blas.a $(CLAPACKROOT)/libf2c/libf2c.a
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_clapack_arm.mk b/src/makefiles/linux_clapack_arm.mk
+index 21fed81b6d5..04acf18f274 100644
+--- a/src/makefiles/linux_clapack_arm.mk
++++ b/src/makefiles/linux_clapack_arm.mk
+@@ -13,7 +13,7 @@ ifndef OPENFSTLIBS
+ $(error OPENFSTLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_openblas.mk b/src/makefiles/linux_openblas.mk
+index bdcc0b9808d..1ac67c355ff 100644
+--- a/src/makefiles/linux_openblas.mk
++++ b/src/makefiles/linux_openblas.mk
+@@ -19,7 +19,7 @@ ifndef OPENBLASLIBS
+ $(error OPENBLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_openblas_aarch64.mk b/src/makefiles/linux_openblas_aarch64.mk
+index 1895d289127..d81990aed7a 100644
+--- a/src/makefiles/linux_openblas_aarch64.mk
++++ b/src/makefiles/linux_openblas_aarch64.mk
+@@ -19,7 +19,7 @@ ifndef OPENBLASLIBS
+ $(error OPENBLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_openblas_arm.mk b/src/makefiles/linux_openblas_arm.mk
+index 780e1df2e5a..1b439cf141c 100644
+--- a/src/makefiles/linux_openblas_arm.mk
++++ b/src/makefiles/linux_openblas_arm.mk
+@@ -19,7 +19,7 @@ ifndef OPENBLASLIBS
+ $(error OPENBLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_openblas_ppc64le.mk b/src/makefiles/linux_openblas_ppc64le.mk
+index 6ab9507fb93..4f74eea5637 100644
+--- a/src/makefiles/linux_openblas_ppc64le.mk
++++ b/src/makefiles/linux_openblas_ppc64le.mk
+@@ -19,7 +19,7 @@ ifndef OPENBLASLIBS
+ $(error OPENBLASLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+diff --git a/src/makefiles/linux_x86_64_mkl.mk b/src/makefiles/linux_x86_64_mkl.mk
+index 896428c184f..2489938a18a 100644
+--- a/src/makefiles/linux_x86_64_mkl.mk
++++ b/src/makefiles/linux_x86_64_mkl.mk
+@@ -17,7 +17,7 @@ ifndef OPENFSTLIBS
+ $(error OPENFSTLIBS not defined.)
+ endif
+ 
+-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 \
++CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 \
+            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+            -Wno-deprecated-declarations -Winit-self \
+            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \

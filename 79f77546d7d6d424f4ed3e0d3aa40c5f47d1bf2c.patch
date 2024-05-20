@@ -1,0 +1,24 @@
+From 79f77546d7d6d424f4ed3e0d3aa40c5f47d1bf2c Mon Sep 17 00:00:00 2001
+From: Nickolay Shmyrev <nshmyrev@gmail.com>
+Date: Fri, 8 Jan 2021 12:50:39 +0100
+Subject: [PATCH] Disable SVD from clapack, needs some more attention as matrix
+ tests fail
+
+---
+ src/configure | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/configure b/src/configure
+index badbf657b9b..723d1b3362a 100755
+--- a/src/configure
++++ b/src/configure
+@@ -1355,6 +1355,9 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
+       *)        cat makefiles/linux_openblas.mk ;;
+     esac >> kaldi.mk
+ 
++    echo >> kaldi.mk
++    echo "CXXFLAGS += -DUSE_KALDI_SVD" >> kaldi.mk
++
+     echo "Successfully configured for Linux with OpenBLAS from $OPENBLASROOT"
+   else
+     failure "Unsupported linear algebra library '$MATHLIB'"
