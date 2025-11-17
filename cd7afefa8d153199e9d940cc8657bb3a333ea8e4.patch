@@ -1,22 +1,12 @@
-From cd7afefa8d153199e9d940cc8657bb3a333ea8e4 Mon Sep 17 00:00:00 2001
-From: =?UTF-8?q?R=C3=A9mi=20Bernon?= <rbernon@codeweavers.com>
-Date: Sun, 29 May 2022 12:18:07 +0200
-Subject: [PATCH] build: Assume OpenFST to be available.
-
----
- CMakeLists.txt | 2 --
- 1 file changed, 2 deletions(-)
-
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 81743beddb7..015fa01316a 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -22,8 +22,6 @@ endif()
+diff -up kaldi-master/CMakeLists.txt.9~ kaldi-master/CMakeLists.txt
+--- kaldi-master/CMakeLists.txt.9~	2025-11-17 17:17:06.894248112 +0100
++++ kaldi-master/CMakeLists.txt	2025-11-17 17:17:39.868990543 +0100
+@@ -35,8 +35,6 @@ if(BuildForFedora)
  
- include(third_party/get_third_party)
- 
--include(cmake/third_party/openfst.cmake)
+ else()
+     include(third_party/get_third_party)
 -
- find_package(PythonInterp)
- if(NOT PYTHON_EXECUTABLE)
-     message(FATAL_ERROR "Needs python to auto-generate most CMake files, but not found.")
+-    include(cmake/third_party/openfst.cmake)
+ endif()
+ 
+ 

@@ -3,7 +3,7 @@
 %define devname %mklibname kaldi -d
 
 Name: kaldi
-Version: 2024.05.20
+Version: 2025.09.22
 Release: 1
 Source0: https://github.com/kaldi-asr/kaldi/archive/refs/heads/master.tar.gz#/kaldi-%{version}.tar.gz
 # VOSK's fork directly:
@@ -21,6 +21,9 @@ BuildRequires: %{mklibname -d fst}
 BuildRequires: git-core
 BuildSystem: cmake
 BuildOption: -DFETCHCONTENT_FULLY_DISCONNECTED:BOOL=ON
+# This essentially triggers building with system libs and current openfst.
+# Should really be named BuildForOM ;)
+BuildOption: -DBuildForFedora:BOOL=ON
 #BuildOption: -DKALDI_BUILD_TEST:BOOL=OFF
 
 %patchlist
@@ -55,26 +58,29 @@ https://github.com/kaldi-asr/kaldi/commit/82dc187a4de08a67b7a9df50ee43e11f455a77
 https://github.com/kaldi-asr/kaldi/commit/e9c3bca9a71fc82c41b990be09fb367bd69f5562.patch
 https://github.com/kaldi-asr/kaldi/commit/98155d8ae0a7f6b2f5d5ed33c07927aaefe96622.patch
 https://github.com/kaldi-asr/kaldi/commit/dd629c862e7ff45ed9fe79c38dcb7c793549dc03.patch
-https://github.com/kaldi-asr/kaldi/commit/b499bbca50edef8bbfabf16f2526ad0b7367b500.patch
+# Landed upstream in a slightly different variant
+#https://github.com/kaldi-asr/kaldi/commit/b499bbca50edef8bbfabf16f2526ad0b7367b500.patch
 # Fixed differently upstream
 #https://github.com/kaldi-asr/kaldi/commit/06d055cd93f9c03fe7047ff8ff97dee113b27202.patch
 # Only affects internalized openblas
 #https://github.com/kaldi-asr/kaldi/commit/d313a7dbfc5a6a4e071a017df70b07ec705523fd.patch
 #https://github.com/kaldi-asr/kaldi/commit/85be09f1dde648834ead4c0a43b377a1a9049f28.patch
-https://github.com/kaldi-asr/kaldi/commit/603496b91abe49cc4bf57611bd668e05fd9693e4.patch
+# Fixed differently upstream
+#https://github.com/kaldi-asr/kaldi/commit/603496b91abe49cc4bf57611bd668e05fd9693e4.patch
 https://github.com/kaldi-asr/kaldi/commit/79f77546d7d6d424f4ed3e0d3aa40c5f47d1bf2c.patch
-https://github.com/kaldi-asr/kaldi/commit/97993cd5794b04f5cf959eda3a8e27f7860fd4b0.patch
+# Fixed differently upstream
+#https://github.com/kaldi-asr/kaldi/commit/97993cd5794b04f5cf959eda3a8e27f7860fd4b0.patch
 https://github.com/kaldi-asr/kaldi/commit/25e0c75fff1ce5c2df4ebc81a08f51586466564a.patch
 https://github.com/kaldi-asr/kaldi/commit/8842452f48a1aa88e32884d5fe99eae3e8222eb6.patch
 # Only affects internalized openblas
 #https://github.com/kaldi-asr/kaldi/commit/cb664d5a4523e87ca5433355150f085168d25870.patch
-https://github.com/kaldi-asr/kaldi/commit/f2630f6c82d06834990ff812208d52c4e5357ccb.patch
-https://github.com/kaldi-asr/kaldi/commit/783c1772da3345eec1a1f41e76c9b3107460459a.patch
-# MODIFIED to remove a chunk that doesn't apply and isn't needed anymore
-https://github.com/kaldi-asr/kaldi/commit/28c8976d7e6c499676cabc717e293288eabbb7d7.patch
+# Fixed differently upstream
+#https://github.com/kaldi-asr/kaldi/commit/f2630f6c82d06834990ff812208d52c4e5357ccb.patch
+# Merged upstream
+#https://github.com/kaldi-asr/kaldi/commit/783c1772da3345eec1a1f41e76c9b3107460459a.patch
+#https://github.com/kaldi-asr/kaldi/commit/28c8976d7e6c499676cabc717e293288eabbb7d7.patch
 https://github.com/kaldi-asr/kaldi/commit/8cbc20fbf66030fce8afbea803bd52335f4e52fa.patch
 https://github.com/kaldi-asr/kaldi/commit/b6a9fefbb01384215aa045d72e6de243b68962bf.patch
-kaldi-openfst-1.8.patch
 kaldi-blas-linkage.patch
 
 %description
